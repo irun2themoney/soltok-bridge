@@ -31,6 +31,7 @@ import DemoModeBanner from './components/DemoModeBanner';
 import OperatorDashboard from './components/OperatorDashboard';
 import OperatorLogin from './components/OperatorLogin';
 import ProductGallery from './components/ProductGallery';
+import { useToast } from './components/Toast';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -43,6 +44,9 @@ const INITIAL_STEPS: FulfillmentStep[] = [
 const App: React.FC = () => {
   // Solana wallet adapter hooks
   const { publicKey, connected, connecting } = useWallet();
+  
+  // Toast notifications
+  const toast = useToast();
   
   // Escrow hook for blockchain transactions
   const { createEscrow, checkUsdcBalance, isProcessing: isEscrowProcessing, error: escrowError } = useEscrow();
@@ -223,14 +227,14 @@ const App: React.FC = () => {
   const handleFinalCheckout = async () => {
     if (!shippingAddress.fullName || !shippingAddress.street) {
       addLog("ERROR: Please provide shipping details.");
-      alert("Please provide shipping details.");
+      toast.error("Missing Information", "Please provide your name and shipping address.");
       return;
     }
     
     // In demo mode, skip wallet check
     if (!isDemoMode && (!connected || !publicKey)) {
       addLog("ERROR: Wallet not connected.");
-      alert("Please connect your wallet first.");
+      toast.warning("Wallet Required", "Please connect your Solana wallet to continue.");
       return;
     }
 
@@ -244,7 +248,7 @@ const App: React.FC = () => {
     
     if (!sufficient) {
       addLog(`ERROR: Insufficient balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
-      alert(`Insufficient balance. You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+      toast.error("Insufficient Balance", `You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
       return;
     }
     
@@ -314,13 +318,16 @@ const App: React.FC = () => {
       setIsCheckoutOpen(false);
       setActiveSection(AppSection.DASHBOARD);
       
+      // Show success toast
+      toast.success("Order Created!", `Your order ${newOrder.id} is now being processed.`);
+      
       // Start fulfillment simulation
       runFulfillmentSim(newOrder.id);
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
       addLog(`ERROR: ${errorMsg}`);
-      alert(`Transaction failed: ${errorMsg}`);
+      toast.error("Transaction Failed", errorMsg);
     } finally {
       setIsProcessingTx(false);
     }
