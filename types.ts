@@ -15,6 +15,7 @@ export interface TikTokProduct {
 
 export interface ShippingAddress {
   fullName: string;
+  email?: string;
   street: string;
   city: string;
   state: string;
@@ -49,10 +50,13 @@ export interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered';
   txHash: string;
   shippingAddress: ShippingAddress;
+  customerEmail?: string;
   timestamp: string;
   steps: FulfillmentStep[];
   isDemo?: boolean;
   walletAddress?: string;
+  trackingNumber?: string;
+  carrier?: string;
 }
 
 export enum AppSection {

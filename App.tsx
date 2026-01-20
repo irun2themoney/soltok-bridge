@@ -26,6 +26,7 @@ import { getProductFromUrl } from './services/geminiService';
 import { useEscrow } from './src/hooks/useEscrow';
 import { useDemoMode, DEMO_PRODUCTS } from './src/hooks/useDemoMode';
 import { useOrders } from './src/hooks/useOrders';
+import { sendOrderEmail } from './src/lib/email';
 import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
@@ -36,6 +37,7 @@ import OperatorDashboard from './components/OperatorDashboard';
 import OperatorLogin from './components/OperatorLogin';
 import ProductGallery from './components/ProductGallery';
 import { useToast } from './components/Toast';
+import { Mail } from 'lucide-react';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -96,7 +98,7 @@ const App: React.FC = () => {
   };
   
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    fullName: '', street: '', city: '', state: '', zip: ''
+    fullName: '', email: '', street: '', city: '', state: '', zip: ''
   });
 
   // Orders hook - handles Supabase persistence with localStorage fallback
@@ -241,7 +243,36 @@ const App: React.FC = () => {
       updateStep('5', 'active');
       await new Promise(r => setTimeout(r, 2000));
       updateStep('5', 'complete');
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      
+      // Generate simulated tracking info
+      const trackingNumber = `TK${Date.now().toString(36).toUpperCase()}`;
+      const carrier = 'USPS';
+      
+      setOrders(prev => prev.map(o => o.id === orderId ? { 
+        ...o, 
+        status: 'shipped',
+        trackingNumber,
+        carrier,
+      } : o));
+      
+      // Send shipped email if customer email exists
+      const order = orders.find(o => o.id === orderId);
+      if (order?.customerEmail) {
+        addLog(`EMAIL: Sending shipping notification...`);
+        sendOrderEmail('order_shipped', {
+          orderId,
+          customerEmail: order.customerEmail,
+          customerName: order.shippingAddress.fullName,
+          productName: order.productName,
+          productImage: order.productImage,
+          productPrice: order.productPrice,
+          totalUsdc: order.totalUsdc,
+          shippingAddress: order.shippingAddress,
+          trackingNumber,
+          carrier,
+        });
+      }
+      
       toast.success("Order Shipped!", "Tracking info synced. Your package is on the way!");
     };
 
@@ -306,6 +337,7 @@ const App: React.FC = () => {
         status: 'processing',
         txHash: escrowResult.txHash || '',
         shippingAddress: { ...shippingAddress },
+        customerEmail: shippingAddress.email,
         timestamp: new Date().toLocaleString(),
         steps: [...INITIAL_STEPS],
         isDemo: isDemoMode,
@@ -344,6 +376,33 @@ const App: React.FC = () => {
       // Save order (Supabase + localStorage)
       await addOrder(newOrder);
       setIsCheckoutOpen(false);
+      
+      // Send confirmation email if email provided
+      if (shippingAddress.email) {
+        addLog(`EMAIL: Sending confirmation to ${shippingAddress.email}...`);
+        sendOrderEmail('order_confirmed', {
+          orderId: newOrder.id,
+          customerEmail: shippingAddress.email,
+          customerName: shippingAddress.fullName,
+          productName: newOrder.productName,
+          productImage: newOrder.productImage,
+          productPrice: newOrder.productPrice,
+          totalUsdc: newOrder.totalUsdc,
+          shippingAddress: {
+            street: shippingAddress.street,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            zip: shippingAddress.zip,
+          },
+          txHash: escrowResult.txHash,
+        }).then(result => {
+          if (result.success) {
+            addLog('EMAIL: Confirmation sent successfully');
+          } else {
+            addLog(`EMAIL: Send failed - ${result.error}`);
+          }
+        });
+      }
       
       // Generate a buyer number (simulated - in production this would come from DB)
       const buyerNumber = 12847 + orders.length + Math.floor(Math.random() * 100);
@@ -645,6 +704,10 @@ const App: React.FC = () => {
                    <h3 className="text-lg md:text-xl font-bold flex items-center gap-3"><MapPin className="w-5 md:w-7 h-5 md:h-7 text-emerald-400" /> Fulfillment Address</h3>
                    <div className="grid grid-cols-1 gap-3 md:gap-5">
                      <input type="text" placeholder="Full Recipient Name" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.fullName} onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} />
+                     <div className="relative">
+                       <Mail className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-4 md:w-5 h-4 md:h-5 text-gray-500" />
+                       <input type="email" placeholder="Email for order updates (optional)" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] pl-12 md:pl-16 pr-4 md:pr-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.email || ''} onChange={e => setShippingAddress({...shippingAddress, email: e.target.value})} />
+                     </div>
                      <input type="text" placeholder="Shipping Street Address" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.street} onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} />
                      <div className="grid grid-cols-3 gap-2 md:gap-5">
                        <input type="text" placeholder="City" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} />
