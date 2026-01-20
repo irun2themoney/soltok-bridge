@@ -18,7 +18,7 @@ export const DemoModeBanner: React.FC<DemoModeBannerProps> = ({
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm font-bold"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-full shadow-lg shadow-emerald-500/30 hover:shadow-xl transition-all hover:scale-105 text-sm font-bold"
       >
         <Sparkles className="w-4 h-4" />
         Try Demo
@@ -27,7 +27,7 @@ export const DemoModeBanner: React.FC<DemoModeBannerProps> = ({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5" />

@@ -576,7 +576,7 @@ const App: React.FC = () => {
                  <button 
                    onClick={handleFinalCheckout} 
                    disabled={isProcessingTx || (!isDemoMode && !connected)} 
-                   className={`w-full ${isDemoMode ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 shadow-purple-500/40' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40'} text-black font-black py-7 rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter`}
+                   className="w-full bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40 text-black font-black py-7 rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter"
                  >
                    {isProcessingTx ? <Loader2 className="w-8 h-8 animate-spin" /> : isDemoMode ? 'DEMO PURCHASE' : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET TO PAY'}
                  </button>
