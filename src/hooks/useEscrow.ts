@@ -1,10 +1,26 @@
 import { useCallback, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { 
+  getAssociatedTokenAddress, 
+  createTransferInstruction,
+  createAssociatedTokenAccountInstruction,
+  getAccount,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
 import { 
   buildEscrowTransaction, 
   getEscrowAccount,
   getEscrowPDA 
 } from '../services/escrowService';
+
+// Devnet USDC mint address
+const DEVNET_USDC_MINT = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+
+// Bridge treasury wallet - receives payments on devnet
+// In production, this would be the escrow program PDA
+const BRIDGE_TREASURY = new PublicKey('BRiDGE1111111111111111111111111111111111111');
 
 interface EscrowResult {
   success: boolean;
@@ -31,6 +47,8 @@ export function useEscrow() {
 
   /**
    * Create an escrow deposit for an order
+   * On devnet: Performs a real USDC transfer to the bridge treasury
+   * On mainnet: Would use the full escrow program (not yet deployed)
    */
   const createEscrow = useCallback(async (
     orderId: string,
@@ -48,6 +66,103 @@ export function useEscrow() {
       const rpcUrl = connection.rpcEndpoint;
       const isDevnet = rpcUrl.includes('devnet');
 
+      // For devnet: Do a real USDC transfer to prove the payment rail works
+      if (isDevnet) {
+        console.log('[Bridge] Devnet mode: Real USDC transfer');
+        console.log(`[Bridge] Order: ${orderId}, Amount: ${amountUsdc} USDC`);
+        
+        // Convert USDC amount to smallest unit (6 decimals)
+        const amountInSmallestUnit = Math.floor(amountUsdc * 1_000_000);
+        
+        // Get the sender's USDC token account
+        const senderTokenAccount = await getAssociatedTokenAddress(
+          DEVNET_USDC_MINT,
+          publicKey
+        );
+        
+        // Get or create the treasury's USDC token account
+        const treasuryTokenAccount = await getAssociatedTokenAddress(
+          DEVNET_USDC_MINT,
+          BRIDGE_TREASURY
+        );
+        
+        // Build the transaction
+        const transaction = new Transaction();
+        
+        // Check if treasury token account exists, if not create it
+        try {
+          await getAccount(connection, treasuryTokenAccount);
+        } catch {
+          // Account doesn't exist, add instruction to create it
+          console.log('[Bridge] Creating treasury token account...');
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey, // payer
+              treasuryTokenAccount, // ata
+              BRIDGE_TREASURY, // owner
+              DEVNET_USDC_MINT, // mint
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+          );
+        }
+        
+        // Add the transfer instruction
+        transaction.add(
+          createTransferInstruction(
+            senderTokenAccount, // from
+            treasuryTokenAccount, // to
+            publicKey, // owner
+            amountInSmallestUnit, // amount
+            [], // multiSigners
+            TOKEN_PROGRAM_ID
+          )
+        );
+        
+        // Get recent blockhash
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = publicKey;
+        
+        // Sign the transaction
+        console.log('[Bridge] Requesting wallet signature...');
+        const signedTx = await signTransaction(transaction);
+        
+        // Send the transaction
+        console.log('[Bridge] Sending transaction...');
+        const txHash = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+        });
+        
+        console.log(`[Bridge] Transaction sent: ${txHash}`);
+        
+        // Wait for confirmation
+        console.log('[Bridge] Waiting for confirmation...');
+        const confirmation = await connection.confirmTransaction({
+          signature: txHash,
+          blockhash,
+          lastValidBlockHeight,
+        }, 'confirmed');
+        
+        if (confirmation.value.err) {
+          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+        }
+        
+        console.log(`[Bridge] Transaction confirmed! View on explorer:`);
+        console.log(`https://explorer.solana.com/tx/${txHash}?cluster=devnet`);
+        
+        // Generate a mock escrow PDA (for compatibility with order storage)
+        const [escrowPDA] = getEscrowPDA(orderId, publicKey);
+        
+        return {
+          success: true,
+          txHash,
+          escrowPDA: escrowPDA.toBase58(),
+        };
+      }
+
+      // Production: Use real escrow program
       // Build the transaction
       const { transaction, escrowPDA } = await buildEscrowTransaction(
         connection,

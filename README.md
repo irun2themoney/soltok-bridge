@@ -14,6 +14,19 @@
 
 ---
 
+## 🎉 v0.1 MVP - Real On-Chain Transactions Working!
+
+**First successful devnet transaction:** [View on Solana Explorer](https://explorer.solana.com/tx/aindVWViR3c7WE6UACRW4DhFN7nWoggSJFju215PC7AS5oMFjVnxQYXPtASCqwTM6ZnYQ2AZXjSfMHfctxBm6UF?cluster=devnet)
+
+- ✅ Real USDC transfers on Solana devnet
+- ✅ Wallet connection (Phantom, Solflare, etc.)
+- ✅ Product verification via Google Gemini API
+- ✅ Order persistence in Supabase
+- ✅ Email notifications via Resend
+- ✅ Analytics dashboard for operators
+
+---
+
 ## What is SolTok Bridge?
 
 SolTok Bridge enables crypto-native buyers to purchase TikTok Shop products using **Solana USDC**. It bridges the gap between Web3 wallets and traditional e-commerce by:
