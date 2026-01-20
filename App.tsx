@@ -358,7 +358,7 @@ const App: React.FC = () => {
               </button>
             )}
             <div className="wallet-adapter-button-wrapper">
-              <WalletMultiButton className={`!px-4 md:!px-6 !py-2 md:!py-3 !rounded-xl !font-bold !text-xs md:!text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
+              <WalletMultiButton className={`!px-4 md:!px-6 !py-2 md:!py-3 !rounded-xl !font-bold !text-xs md:!text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-emerald-500 !text-black hover:!bg-emerald-400'}`} />
             </div>
           </div>
         </div>
