@@ -23,13 +23,14 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { AppSection, TikTokProduct, ShippingAddress, Order, FulfillmentStep } from './types';
 import { getProductFromUrl } from './services/geminiService';
 import { useEscrow } from './src/hooks/useEscrow';
-import { useDemoMode } from './src/hooks/useDemoMode';
+import { useDemoMode, DEMO_PRODUCTS } from './src/hooks/useDemoMode';
 import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
 import DemoModeBanner from './components/DemoModeBanner';
 import OperatorDashboard from './components/OperatorDashboard';
 import OperatorLogin from './components/OperatorLogin';
+import ProductGallery from './components/ProductGallery';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -406,6 +407,19 @@ const App: React.FC = () => {
                 <div className="inline-flex items-center gap-3 text-emerald-400 font-mono text-xs uppercase tracking-widest">
                   <Globe className="w-4 h-4 animate-spin-slow" /> Grounding Live Data...
                 </div>
+              </div>
+            )}
+
+            {/* Demo Mode Product Gallery */}
+            {isDemoMode && !bridgedProduct && !loading && (
+              <div className="mt-16">
+                <ProductGallery 
+                  products={DEMO_PRODUCTS}
+                  onSelectProduct={(product) => {
+                    setBridgedProduct(product);
+                    addLog(`DEMO: Selected ${product.title} - $${product.price}`);
+                  }}
+                />
               </div>
             )}
 
