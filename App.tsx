@@ -23,9 +23,11 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { AppSection, TikTokProduct, ShippingAddress, Order, FulfillmentStep } from './types';
 import { getProductFromUrl } from './services/geminiService';
 import { useEscrow } from './src/hooks/useEscrow';
+import { useDemoMode } from './src/hooks/useDemoMode';
 import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
+import DemoModeBanner from './components/DemoModeBanner';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -41,6 +43,17 @@ const App: React.FC = () => {
   
   // Escrow hook for blockchain transactions
   const { createEscrow, checkUsdcBalance, isProcessing: isEscrowProcessing, error: escrowError } = useEscrow();
+  
+  // Demo mode hook
+  const { 
+    isDemoMode, 
+    toggleDemoMode, 
+    demoWalletBalance, 
+    resetDemoWallet,
+    verifyProduct: verifyDemoProduct,
+    createDemoEscrow,
+    checkDemoBalance,
+  } = useDemoMode();
   
   const [activeSection, setActiveSection] = useState<AppSection>(AppSection.BROWSE);
   const [urlInput, setUrlInput] = useState('');
@@ -73,13 +86,28 @@ const App: React.FC = () => {
   }, []);
 
   const handleFetchProduct = async () => {
-    if (!urlInput.includes('tiktok.com')) {
+    if (!urlInput.includes('tiktok.com') && !isDemoMode) {
       addLog("ERROR: Please provide a valid TikTok link.");
       return;
     }
     setLoading(true);
     setBridgedProduct(null);
     setImageError(false);
+    
+    if (isDemoMode) {
+      addLog(`DEMO: Simulating product verification...`);
+      try {
+        const product = await verifyDemoProduct(urlInput || 'demo');
+        setBridgedProduct(product);
+        addLog(`DEMO: ${product.title} - $${product.price}`);
+      } catch (err) {
+        addLog(`DEMO ERROR: Verification failed.`);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    
     addLog(`INIT: Researching TikTok Link via Google Grounding...`);
     try {
       const product = await getProductFromUrl(urlInput);
@@ -138,7 +166,8 @@ const App: React.FC = () => {
       return;
     }
     
-    if (!connected || !publicKey) {
+    // In demo mode, skip wallet check
+    if (!isDemoMode && (!connected || !publicKey)) {
       addLog("ERROR: Wallet not connected.");
       alert("Please connect your wallet first.");
       return;
@@ -146,33 +175,37 @@ const App: React.FC = () => {
 
     const totalAmount = (bridgedProduct?.price || 0) * 1.05;
     
-    // Check USDC balance
-    addLog("BALANCE: Checking USDC balance...");
-    const { sufficient, balance } = await checkUsdcBalance(totalAmount);
+    // Check balance (demo or real)
+    addLog(isDemoMode ? "DEMO: Checking balance..." : "BALANCE: Checking USDC balance...");
+    const { sufficient, balance } = isDemoMode 
+      ? await checkDemoBalance(totalAmount)
+      : await checkUsdcBalance(totalAmount);
     
     if (!sufficient) {
-      addLog(`ERROR: Insufficient USDC balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
-      alert(`Insufficient USDC balance. You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+      addLog(`ERROR: Insufficient balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
+      alert(`Insufficient balance. You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
       return;
     }
     
-    addLog(`BALANCE: ${balance.toFixed(2)} USDC available. Proceeding...`);
+    addLog(`${isDemoMode ? 'DEMO' : 'BALANCE'}: ${balance.toFixed(2)} USDC available. Proceeding...`);
     setIsProcessingTx(true);
     
     // Generate order ID
-    const orderId = `ST-${Math.floor(Math.random() * 9000) + 1000}`;
+    const orderId = `${isDemoMode ? 'DEMO' : 'ST'}-${Math.floor(Math.random() * 9000) + 1000}`;
     
-    addLog("TX: Initiating escrow deposit transaction...");
+    addLog(isDemoMode ? "DEMO: Simulating escrow transaction..." : "TX: Initiating escrow deposit transaction...");
     
     try {
-      // Create escrow on Solana
-      const escrowResult = await createEscrow(orderId, totalAmount);
+      // Create escrow (demo or real)
+      const escrowResult = isDemoMode
+        ? await createDemoEscrow(orderId, totalAmount)
+        : await createEscrow(orderId, totalAmount);
       
       if (!escrowResult.success) {
-        throw new Error(escrowResult.error || 'Failed to create escrow');
+        throw new Error((escrowResult as any).error || 'Failed to create escrow');
       }
       
-      addLog(`TX: Escrow locked! Signature: ${escrowResult.txHash?.slice(0, 8)}...`);
+      addLog(`${isDemoMode ? 'DEMO' : 'TX'}: Escrow locked! Signature: ${escrowResult.txHash?.slice(0, 8)}...`);
       
       // Create order record
       const newOrder: Order = {
@@ -186,29 +219,33 @@ const App: React.FC = () => {
         steps: [...INITIAL_STEPS]
       };
 
-      // Submit order to backend API
-      addLog("API: Submitting order to backend...");
-      try {
-        const apiResponse = await fetch('/api/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txHash: escrowResult.txHash,
-            escrowPda: escrowResult.escrowPDA,
-            buyerPubkey: publicKey.toBase58(),
-            product: bridgedProduct,
-            totalUsdc: totalAmount,
-            shippingAddress
-          })
-        });
-        
-        if (apiResponse.ok) {
-          addLog("API: Order confirmed by backend.");
-        } else {
+      // Submit order to backend API (skip in demo mode)
+      if (!isDemoMode) {
+        addLog("API: Submitting order to backend...");
+        try {
+          const apiResponse = await fetch('/api/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              txHash: escrowResult.txHash,
+              escrowPda: escrowResult.escrowPDA,
+              buyerPubkey: publicKey?.toBase58(),
+              product: bridgedProduct,
+              totalUsdc: totalAmount,
+              shippingAddress
+            })
+          });
+          
+          if (apiResponse.ok) {
+            addLog("API: Order confirmed by backend.");
+          } else {
+            addLog("API: Backend unavailable, order stored locally.");
+          }
+        } catch (apiError) {
           addLog("API: Backend unavailable, order stored locally.");
         }
-      } catch (apiError) {
-        addLog("API: Backend unavailable, order stored locally.");
+      } else {
+        addLog("DEMO: Order stored locally (no backend call).");
       }
 
       // Update local state
@@ -459,16 +496,24 @@ const App: React.FC = () => {
                  </div>
                  <button 
                    onClick={handleFinalCheckout} 
-                   disabled={isProcessingTx || !connected} 
-                   className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-7 rounded-[32px] transition-all shadow-3xl shadow-emerald-500/40 flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter"
+                   disabled={isProcessingTx || (!isDemoMode && !connected)} 
+                   className={`w-full ${isDemoMode ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 shadow-purple-500/40' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40'} text-black font-black py-7 rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter`}
                  >
-                   {isProcessingTx ? <Loader2 className="w-8 h-8 animate-spin" /> : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET TO PAY'}
+                   {isProcessingTx ? <Loader2 className="w-8 h-8 animate-spin" /> : isDemoMode ? 'DEMO PURCHASE' : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET TO PAY'}
                  </button>
                </div>
             </div>
           </div>
         </div>
       )}
+      
+      {/* Demo Mode Banner */}
+      <DemoModeBanner 
+        isDemoMode={isDemoMode}
+        onToggle={toggleDemoMode}
+        balance={isDemoMode ? demoWalletBalance : undefined}
+        onResetWallet={resetDemoWallet}
+      />
     </div>
   );
 };
