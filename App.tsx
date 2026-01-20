@@ -29,6 +29,7 @@ import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
 import DemoModeBanner from './components/DemoModeBanner';
+import { DatabaseStatus, OrderCardSkeleton } from './components/Skeleton';
 import OperatorDashboard from './components/OperatorDashboard';
 import OperatorLogin from './components/OperatorLogin';
 import ProductGallery from './components/ProductGallery';
@@ -359,7 +360,10 @@ const App: React.FC = () => {
           </div>
           <div className="hidden md:flex items-center gap-10 text-xs font-bold uppercase tracking-widest text-gray-500">
             <button onClick={() => setActiveSection(AppSection.BROWSE)} className={`hover:text-white transition-colors ${activeSection === AppSection.BROWSE ? 'text-emerald-400' : ''}`}>Bridge Tool</button>
-            <button onClick={() => setActiveSection(AppSection.DASHBOARD)} className={`hover:text-white transition-colors ${activeSection === AppSection.DASHBOARD ? 'text-emerald-400' : ''}`}>My Orders {orders.length > 0 && `(${orders.length})`}</button>
+            <button onClick={() => setActiveSection(AppSection.DASHBOARD)} className={`hover:text-white transition-colors flex items-center gap-2 ${activeSection === AppSection.DASHBOARD ? 'text-emerald-400' : ''}`}>
+              My Orders {orders.length > 0 && `(${orders.length})`}
+              {isLoadingOrders && <span className="w-3 h-3 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />}
+            </button>
             <button onClick={() => setActiveSection(AppSection.ARCHITECTURE)} className={`hover:text-white transition-colors ${activeSection === AppSection.ARCHITECTURE ? 'text-emerald-400' : ''}`}>Protocol</button>
           </div>
           <div className="flex items-center gap-3">
@@ -505,12 +509,30 @@ const App: React.FC = () => {
 
         {activeSection === AppSection.DASHBOARD && (
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+             {/* Database Status */}
+             <div className="flex justify-between items-center">
+               <h2 className="text-2xl font-bold">Your Orders</h2>
+               <DatabaseStatus 
+                 connected={supabaseEnabled} 
+                 loading={isLoadingOrders} 
+                 orderCount={orders.length}
+               />
+             </div>
+             
              <div className="grid grid-cols-1 gap-12">
                 <div className="space-y-8">
-                  {orders.length === 0 ? (
+                  {isLoadingOrders ? (
+                    // Loading skeletons
+                    <div className="space-y-6">
+                      {[1, 2, 3].map(i => <OrderCardSkeleton key={i} />)}
+                    </div>
+                  ) : orders.length === 0 ? (
                     <div className="glass p-24 text-center rounded-[48px] border-white/5 space-y-6">
                       <Activity className="w-16 h-16 text-gray-700 mx-auto" />
                       <h3 className="text-2xl font-bold text-gray-400">No active bridges.</h3>
+                      <p className="text-gray-600 text-sm">
+                        {supabaseEnabled ? 'Orders sync across all your devices.' : 'Orders stored locally in this browser.'}
+                      </p>
                       <button onClick={() => setActiveSection(AppSection.BROWSE)} className="text-emerald-400 font-bold uppercase tracking-widest text-xs hover:underline">Start your first bridge</button>
                     </div>
                   ) : (
