@@ -1,13 +1,16 @@
 
 export interface TikTokProduct {
   id: string;
+  name?: string;
   title: string;
   price: number;
   imageUrl: string;
   seller: string;
+  merchant?: string;
   category: string;
   rating: number;
   inventory: number;
+  url?: string;
 }
 
 export interface ShippingAddress {
@@ -31,20 +34,25 @@ export interface Review {
 export interface FulfillmentStep {
   id: string;
   label: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  description: string;
-  icon: string;
+  status: 'pending' | 'active' | 'complete';
+  timestamp?: number;
+  description?: string;
+  icon?: string;
 }
 
 export interface Order {
   id: string;
-  products: CartItem[];
+  productName: string;
+  productImage: string;
+  productPrice: number;
   totalUsdc: number;
-  status: 'pending' | 'paid' | 'bridging' | 'purchased' | 'shipped';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered';
   txHash: string;
   shippingAddress: ShippingAddress;
   timestamp: string;
   steps: FulfillmentStep[];
+  isDemo?: boolean;
+  walletAddress?: string;
 }
 
 export enum AppSection {

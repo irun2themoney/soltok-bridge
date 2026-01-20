@@ -32,7 +32,13 @@ interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   escrowAmount: number;
   shippingName: string;
-  shippingAddress: string;
+  shippingAddress: {
+    fullName: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
   walletAddress?: string;
   createdAt: number;
   fulfillmentSteps: FulfillmentStep[];
@@ -69,7 +75,13 @@ const OrderStatusPage: React.FC = () => {
               status: dbOrder.status as Order['status'],
               escrowAmount: dbOrder.escrow_amount,
               shippingName: dbOrder.shipping_name,
-              shippingAddress: dbOrder.shipping_address,
+              shippingAddress: {
+                fullName: dbOrder.shipping_name,
+                street: dbOrder.shipping_street || '',
+                city: dbOrder.shipping_city || '',
+                state: dbOrder.shipping_state || '',
+                zip: dbOrder.shipping_zip || '',
+              },
               walletAddress: dbOrder.wallet_address || undefined,
               createdAt: new Date(dbOrder.created_at).getTime(),
               fulfillmentSteps: dbOrder.fulfillment_steps as FulfillmentStep[] || [],
@@ -115,7 +127,13 @@ const OrderStatusPage: React.FC = () => {
             status: dbOrder.status as Order['status'],
             escrowAmount: dbOrder.escrow_amount,
             shippingName: dbOrder.shipping_name,
-            shippingAddress: dbOrder.shipping_address,
+            shippingAddress: {
+              fullName: dbOrder.shipping_name,
+              street: dbOrder.shipping_street || '',
+              city: dbOrder.shipping_city || '',
+              state: dbOrder.shipping_state || '',
+              zip: dbOrder.shipping_zip || '',
+            },
             walletAddress: dbOrder.wallet_address || undefined,
             createdAt: new Date(dbOrder.created_at).getTime(),
             fulfillmentSteps: dbOrder.fulfillment_steps as FulfillmentStep[] || [],
@@ -296,8 +314,12 @@ const OrderStatusPage: React.FC = () => {
           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6">
             <h2 className="text-lg font-bold text-white mb-4">Shipping To</h2>
             <div className="space-y-2">
-              <p className="text-white font-medium">{order.shippingName}</p>
-              <p className="text-gray-400 text-sm whitespace-pre-wrap">{order.shippingAddress}</p>
+              <p className="text-white font-medium">{order.shippingAddress.fullName}</p>
+              <p className="text-gray-400 text-sm">
+                {order.shippingAddress.street && <>{order.shippingAddress.street}<br /></>}
+                {order.shippingAddress.city && `${order.shippingAddress.city}, `}
+                {order.shippingAddress.state} {order.shippingAddress.zip}
+              </p>
               {order.walletAddress && (
                 <p className="text-gray-600 text-xs font-mono mt-4">
                   Wallet: {order.walletAddress.slice(0, 8)}...{order.walletAddress.slice(-8)}

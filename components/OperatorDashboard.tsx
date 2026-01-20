@@ -32,7 +32,7 @@ interface OperatorDashboardProps {
   isDemo?: boolean;
 }
 
-type FilterStatus = 'all' | 'paid' | 'processing' | 'shipped' | 'completed' | 'refunded';
+type FilterStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered';
 
 export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
   orders,
@@ -50,9 +50,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
   // Calculate stats
   const stats = {
     total: orders.length,
-    pending: orders.filter(o => o.status === 'paid' || o.status === 'processing').length,
-    completed: orders.filter(o => o.status === 'completed' || o.status === 'shipped').length,
-    refunded: orders.filter(o => o.status === 'refunded').length,
+    pending: orders.filter(o => o.status === 'pending' || o.status === 'processing').length,
+    completed: orders.filter(o => o.status === 'delivered' || o.status === 'shipped').length,
+    refunded: 0, // Not tracking refunds in this version
     totalVolume: orders.reduce((sum, o) => sum + o.totalUsdc, 0),
     todayOrders: orders.filter(o => {
       const orderDate = new Date(o.timestamp);
@@ -66,7 +66,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     const matchesSearch = searchQuery === '' || 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.products.some(p => p.product.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      order.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.shippingAddress.fullName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
@@ -75,7 +75,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
     setIsProcessing(orderId);
     try {
       await onReleaseEscrow(orderId);
-      onUpdateStatus(orderId, 'completed');
+      onUpdateStatus(orderId, 'delivered');
     } catch (error) {
       console.error('Failed to release escrow:', error);
     } finally {
@@ -88,7 +88,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
     setIsProcessing(orderId);
     try {
       await onRefundOrder(orderId);
-      onUpdateStatus(orderId, 'refunded');
+      // Note: refunded status not available in current Order type
     } catch (error) {
       console.error('Failed to refund:', error);
     } finally {
@@ -99,9 +99,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
 
   const handleAdvanceStatus = (orderId: string, currentStatus: Order['status']) => {
     const statusFlow: Record<string, Order['status']> = {
-      'paid': 'processing',
+      'pending': 'processing',
       'processing': 'shipped',
-      'shipped': 'completed',
+      'shipped': 'delivered',
     };
     const nextStatus = statusFlow[currentStatus];
     if (nextStatus) {
@@ -112,11 +112,10 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
 
   const getStatusBadge = (status: Order['status']) => {
     const badges: Record<Order['status'], { bg: string; text: string; icon: React.ReactNode }> = {
-      paid: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', icon: <Clock className="w-3 h-3" /> },
+      pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', icon: <Clock className="w-3 h-3" /> },
       processing: { bg: 'bg-blue-500/20', text: 'text-blue-400', icon: <RefreshCw className="w-3 h-3 animate-spin" /> },
       shipped: { bg: 'bg-purple-500/20', text: 'text-purple-400', icon: <Truck className="w-3 h-3" /> },
-      completed: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', icon: <CheckCircle2 className="w-3 h-3" /> },
-      refunded: { bg: 'bg-red-500/20', text: 'text-red-400', icon: <XCircle className="w-3 h-3" /> },
+      delivered: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', icon: <CheckCircle2 className="w-3 h-3" /> },
     };
     const badge = badges[status];
     return (
@@ -219,7 +218,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
         </div>
         
         <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
-          {(['all', 'paid', 'processing', 'shipped', 'completed', 'refunded'] as FilterStatus[]).map((status) => (
+          {(['all', 'pending', 'processing', 'shipped', 'delivered'] as FilterStatus[]).map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
@@ -279,21 +278,21 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
                       <p className="text-xs text-gray-600 mt-1 font-mono">{order.txHash.slice(0, 16)}...</p>
                     </td>
                     <td className="p-4">
-                      {order.products[0] && (
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
+                        {order.productImage && (
                           <img 
-                            src={order.products[0].product.imageUrl} 
+                            src={order.productImage} 
                             alt="" 
                             className="w-10 h-10 rounded-lg object-cover bg-white/5"
                           />
-                          <div>
-                            <p className="text-sm font-bold line-clamp-1 max-w-[200px]">
-                              {order.products[0].product.title}
-                            </p>
-                            <p className="text-xs text-gray-500">Qty: {order.products[0].quantity}</p>
-                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold line-clamp-1 max-w-[200px]">
+                            {order.productName}
+                          </p>
+                          <p className="text-xs text-gray-500">${order.productPrice?.toFixed(2) || order.totalUsdc.toFixed(2)}</p>
                         </div>
-                      )}
+                      </div>
                     </td>
                     <td className="p-4">
                       <p className="text-sm font-bold">{order.shippingAddress.fullName || 'N/A'}</p>
@@ -331,7 +330,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
                           
                           {showActionMenu === order.id && (
                             <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                              {(order.status === 'paid' || order.status === 'processing' || order.status === 'shipped') && (
+                              {(order.status === 'pending' || order.status === 'processing' || order.status === 'shipped') && (
                                 <button
                                   onClick={() => handleAdvanceStatus(order.id, order.status)}
                                   className="w-full px-4 py-3 text-left text-sm hover:bg-white/5 flex items-center gap-3 transition-colors"
@@ -352,7 +351,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
                                 </button>
                               )}
                               
-                              {order.status !== 'refunded' && order.status !== 'completed' && (
+                              {order.status !== 'delivered' && (
                                 <button
                                   onClick={() => handleRefund(order.id)}
                                   disabled={isProcessing === order.id}
@@ -411,26 +410,26 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
               </div>
               
               {/* Product */}
-              {selectedOrder.products[0] && (
-                <div className="bg-white/5 rounded-2xl p-4">
-                  <div className="flex gap-4">
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex gap-4">
+                  {selectedOrder.productImage && (
                     <img 
-                      src={selectedOrder.products[0].product.imageUrl} 
+                      src={selectedOrder.productImage} 
                       alt="" 
                       className="w-20 h-20 rounded-xl object-cover"
                     />
-                    <div>
-                      <h3 className="font-bold">{selectedOrder.products[0].product.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {selectedOrder.products[0].product.seller}
-                      </p>
-                      <p className="text-emerald-400 font-bold mt-2">
-                        ${selectedOrder.products[0].product.price} × {selectedOrder.products[0].quantity}
-                      </p>
-                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-bold">{selectedOrder.productName}</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      TikTok Shop
+                    </p>
+                    <p className="text-emerald-400 font-bold mt-2">
+                      ${selectedOrder.productPrice?.toFixed(2) || selectedOrder.totalUsdc.toFixed(2)}
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
               
               {/* Shipping */}
               <div>
@@ -477,7 +476,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
                     Release Escrow
                   </button>
                 )}
-                {selectedOrder.status !== 'refunded' && selectedOrder.status !== 'completed' && (
+                {selectedOrder.status !== 'delivered' && (
                   <button
                     onClick={() => {
                       handleRefund(selectedOrder.id);

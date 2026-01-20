@@ -9,8 +9,8 @@ interface FulfillmentTrackerProps {
 }
 
 const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({ steps, isGlobal = false }) => {
-  const getIcon = (iconName: string, status: string) => {
-    const color = status === 'completed' ? 'text-emerald-400' : status === 'processing' ? 'text-blue-400' : 'text-gray-500';
+  const getIcon = (iconName: string | undefined, status: string) => {
+    const color = status === 'complete' ? 'text-emerald-400' : status === 'active' ? 'text-blue-400' : 'text-gray-500';
     switch (iconName) {
       case 'wallet': return <Wallet className={`w-5 h-5 ${color}`} />;
       case 'card': return <CreditCard className={`w-5 h-5 ${color}`} />;
@@ -21,7 +21,7 @@ const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({ steps, isGlobal
     }
   };
 
-  const activeStep = steps.find(s => s.status === 'processing');
+  const activeStep = steps.find(s => s.status === 'active');
 
   return (
     <div className={`glass rounded-2xl p-6 border border-white/5 ${isGlobal ? 'bg-emerald-500/5' : ''}`}>
@@ -37,14 +37,14 @@ const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({ steps, isGlobal
         {steps.map((step, idx) => (
           <div key={step.id} className="relative pl-8 pb-4 last:pb-0">
             {idx !== steps.length - 1 && (
-              <div className={`absolute left-[15px] top-8 bottom-0 w-[2px] transition-colors duration-500 ${step.status === 'completed' ? 'bg-emerald-500/30' : 'bg-white/5'}`} />
+              <div className={`absolute left-[15px] top-8 bottom-0 w-[2px] transition-colors duration-500 ${step.status === 'complete' ? 'bg-emerald-500/30' : 'bg-white/5'}`} />
             )}
             <div className="absolute left-0 top-0 transition-all duration-500">
-              {step.status === 'completed' ? (
+              {step.status === 'complete' ? (
                 <div className="bg-emerald-500/20 p-1.5 rounded-full scale-110">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 </div>
-              ) : step.status === 'processing' ? (
+              ) : step.status === 'active' ? (
                 <div className="bg-blue-500/20 p-1.5 rounded-full animate-pulse ring-2 ring-blue-500/20">
                   <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                 </div>
@@ -59,7 +59,7 @@ const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({ steps, isGlobal
                 <h4 className={`text-sm font-bold transition-colors ${step.status === 'pending' ? 'text-gray-500' : 'text-white'}`}>
                   {step.label}
                 </h4>
-                <p className="text-xs text-gray-400 mt-1">{step.description}</p>
+                {step.description && <p className="text-xs text-gray-400 mt-1">{step.description}</p>}
               </div>
               <div className="bg-white/5 p-2 rounded-lg">
                 {getIcon(step.icon, step.status)}

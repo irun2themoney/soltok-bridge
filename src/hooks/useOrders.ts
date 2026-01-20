@@ -1,83 +1,47 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ordersApi, DbOrder, isSupabaseConfigured } from '../lib/supabase';
-
-export interface Order {
-  id: string;
-  product: {
-    name: string;
-    image: string;
-    price: number;
-    merchant: string;
-    url: string;
-  };
-  status: 'pending' | 'locked' | 'processing' | 'shipped' | 'delivered' | 'refunded';
-  escrowAmount: number;
-  escrowTxHash: string | null;
-  shippingAddress: {
-    fullName: string;
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-  };
-  walletAddress: string | null;
-  isDemo: boolean;
-  steps: FulfillmentStep[];
-  createdAt: Date;
-}
-
-export interface FulfillmentStep {
-  id: string;
-  label: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  description: string;
-  icon: string;
-}
+import { Order, FulfillmentStep } from '../../types';
 
 // Convert DB order to app order format
 const dbToAppOrder = (dbOrder: DbOrder): Order => ({
   id: dbOrder.id,
-  product: {
-    name: dbOrder.product_name,
-    image: dbOrder.product_image,
-    price: dbOrder.product_price,
-    merchant: dbOrder.merchant,
-    url: dbOrder.tiktok_url,
-  },
-  status: dbOrder.status,
-  escrowAmount: dbOrder.escrow_amount,
-  escrowTxHash: dbOrder.escrow_tx_hash,
+  productName: dbOrder.product_name,
+  productImage: dbOrder.product_image,
+  productPrice: dbOrder.product_price,
+  totalUsdc: dbOrder.escrow_amount,
+  status: dbOrder.status as Order['status'],
+  txHash: dbOrder.escrow_tx_hash || '',
   shippingAddress: {
     fullName: dbOrder.shipping_name,
-    street: dbOrder.shipping_street,
-    city: dbOrder.shipping_city,
-    state: dbOrder.shipping_state,
-    zip: dbOrder.shipping_zip,
+    street: dbOrder.shipping_street || '',
+    city: dbOrder.shipping_city || '',
+    state: dbOrder.shipping_state || '',
+    zip: dbOrder.shipping_zip || '',
   },
-  walletAddress: dbOrder.wallet_address,
+  walletAddress: dbOrder.wallet_address || undefined,
   isDemo: dbOrder.is_demo,
   steps: dbOrder.fulfillment_steps || [],
-  createdAt: new Date(dbOrder.created_at),
+  timestamp: new Date(dbOrder.created_at).toLocaleString(),
 });
 
 // Convert app order to DB format
 const appToDbOrder = (order: Order): Omit<DbOrder, 'created_at' | 'updated_at'> => ({
   id: order.id,
-  product_name: order.product.name,
-  product_image: order.product.image,
-  product_price: order.product.price,
-  merchant: order.product.merchant,
-  tiktok_url: order.product.url,
+  product_name: order.productName,
+  product_image: order.productImage,
+  product_price: order.productPrice,
+  merchant: '',
+  tiktok_url: '',
   status: order.status,
-  escrow_amount: order.escrowAmount,
-  escrow_tx_hash: order.escrowTxHash,
+  escrow_amount: order.totalUsdc,
+  escrow_tx_hash: order.txHash,
   shipping_name: order.shippingAddress.fullName,
   shipping_street: order.shippingAddress.street,
   shipping_city: order.shippingAddress.city,
   shipping_state: order.shippingAddress.state,
   shipping_zip: order.shippingAddress.zip,
-  wallet_address: order.walletAddress,
-  is_demo: order.isDemo,
+  wallet_address: order.walletAddress || null,
+  is_demo: order.isDemo || false,
   fulfillment_steps: order.steps,
 });
 
@@ -95,10 +59,7 @@ export function useOrders(walletAddress?: string | null) {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        return parsed.map((o: any) => ({
-          ...o,
-          createdAt: new Date(o.createdAt),
-        }));
+        return parsed;
       }
     } catch (e) {
       console.error('Error loading from localStorage:', e);
@@ -220,7 +181,7 @@ export function useOrders(walletAddress?: string | null) {
         // Convert partial updates to DB format
         const dbUpdates: Partial<DbOrder> = {};
         if (updates.status) dbUpdates.status = updates.status;
-        if (updates.escrowTxHash) dbUpdates.escrow_tx_hash = updates.escrowTxHash;
+        if (updates.txHash) dbUpdates.escrow_tx_hash = updates.txHash;
         if (updates.steps) dbUpdates.fulfillment_steps = updates.steps;
         
         await ordersApi.update(orderId, dbUpdates);
