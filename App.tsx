@@ -100,6 +100,26 @@ const App: React.FC = () => {
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: '', email: '', street: '', city: '', state: '', zip: ''
   });
+  const [formTouched, setFormTouched] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutStep, setCheckoutStep] = useState<string>('');
+
+  // Form validation
+  const isFormValid = Boolean(
+    shippingAddress.fullName.trim() &&
+    shippingAddress.street.trim() &&
+    shippingAddress.city.trim() &&
+    shippingAddress.state.trim() &&
+    shippingAddress.zip.trim()
+  );
+
+  const getFieldError = (field: keyof ShippingAddress) => {
+    if (!formTouched) return '';
+    const value = shippingAddress[field];
+    if (field === 'email') return ''; // Email is optional
+    if (!value || !value.trim()) return 'Required';
+    return '';
+  };
 
   // Orders hook - handles Supabase persistence with localStorage fallback
   const { 
@@ -280,9 +300,14 @@ const App: React.FC = () => {
   };
 
   const handleFinalCheckout = async () => {
-    if (!shippingAddress.fullName || !shippingAddress.street) {
+    // Reset error state
+    setCheckoutError(null);
+    setCheckoutStep('');
+    
+    if (!isFormValid) {
+      setFormTouched(true);
       addLog("ERROR: Please provide shipping details.");
-      toast.error("Missing Information", "Please provide your name and shipping address.");
+      toast.error("Missing Information", "Please fill in all required shipping fields.");
       return;
     }
     
@@ -296,23 +321,35 @@ const App: React.FC = () => {
     const totalAmount = (bridgedProduct?.price || 0) * 1.05;
     
     // Check balance (demo or real)
+    setCheckoutStep('Checking USDC balance...');
     addLog(isDemoMode ? "DEMO: Checking balance..." : "BALANCE: Checking USDC balance...");
-    const { sufficient, balance } = isDemoMode 
-      ? await checkDemoBalance(totalAmount)
-      : await checkUsdcBalance(totalAmount);
     
-    if (!sufficient) {
-      addLog(`ERROR: Insufficient balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
-      toast.error("Insufficient Balance", `You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+    try {
+      const { sufficient, balance } = isDemoMode 
+        ? await checkDemoBalance(totalAmount)
+        : await checkUsdcBalance(totalAmount);
+      
+      if (!sufficient) {
+        addLog(`ERROR: Insufficient balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
+        setCheckoutError(`Insufficient balance. You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+        toast.error("Insufficient Balance", `You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+        return;
+      }
+      
+      addLog(`${isDemoMode ? 'DEMO' : 'BALANCE'}: ${balance.toFixed(2)} USDC available. Proceeding...`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to check balance';
+      setCheckoutError(errorMsg);
+      addLog(`ERROR: ${errorMsg}`);
       return;
     }
     
-    addLog(`${isDemoMode ? 'DEMO' : 'BALANCE'}: ${balance.toFixed(2)} USDC available. Proceeding...`);
     setIsProcessingTx(true);
     
     // Generate order ID
     const orderId = `${isDemoMode ? 'DEMO' : 'ST'}-${Math.floor(Math.random() * 9000) + 1000}`;
     
+    setCheckoutStep('Creating escrow transaction...');
     addLog(isDemoMode ? "DEMO: Simulating escrow transaction..." : "TX: Initiating escrow deposit transaction...");
     
     try {
@@ -325,6 +362,7 @@ const App: React.FC = () => {
         throw new Error((escrowResult as any).error || 'Failed to create escrow');
       }
       
+      setCheckoutStep('Escrow locked! Saving order...');
       addLog(`${isDemoMode ? 'DEMO' : 'TX'}: Escrow locked! Signature: ${escrowResult.txHash?.slice(0, 8)}...`);
       
       // Create order record
@@ -422,9 +460,11 @@ const App: React.FC = () => {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
       addLog(`ERROR: ${errorMsg}`);
+      setCheckoutError(errorMsg);
       toast.error("Transaction Failed", errorMsg);
     } finally {
       setIsProcessingTx(false);
+      setCheckoutStep('');
     }
   };
 
@@ -578,7 +618,12 @@ const App: React.FC = () => {
                   </div>
 
                   <button 
-                    onClick={() => setIsCheckoutOpen(true)}
+                    onClick={() => {
+                      setFormTouched(false);
+                      setCheckoutError(null);
+                      setCheckoutStep('');
+                      setIsCheckoutOpen(true);
+                    }}
                     className="w-full bg-white text-black font-black py-4 md:py-6 rounded-2xl md:rounded-3xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-3 text-base md:text-xl shadow-xl shadow-white/5"
                   >
                     <CreditCard className="w-5 md:w-6 h-5 md:h-6" /> PAY WITH USDC
@@ -703,17 +748,80 @@ const App: React.FC = () => {
                  <div className="space-y-4 md:space-y-8">
                    <h3 className="text-lg md:text-xl font-bold flex items-center gap-3"><MapPin className="w-5 md:w-7 h-5 md:h-7 text-emerald-400" /> Fulfillment Address</h3>
                    <div className="grid grid-cols-1 gap-3 md:gap-5">
-                     <input type="text" placeholder="Full Recipient Name" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.fullName} onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} />
+                     <div className="relative">
+                       <input 
+                         type="text" 
+                         placeholder="Full Recipient Name *" 
+                         className={`w-full bg-white/5 border rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base transition-colors ${
+                           getFieldError('fullName') ? 'border-red-500/50' : 'border-white/10'
+                         }`}
+                         value={shippingAddress.fullName} 
+                         onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} 
+                       />
+                       {getFieldError('fullName') && (
+                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-400 text-xs">{getFieldError('fullName')}</span>
+                       )}
+                     </div>
                      <div className="relative">
                        <Mail className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-4 md:w-5 h-4 md:h-5 text-gray-500" />
-                       <input type="email" placeholder="Email for order updates (optional)" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] pl-12 md:pl-16 pr-4 md:pr-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.email || ''} onChange={e => setShippingAddress({...shippingAddress, email: e.target.value})} />
+                       <input 
+                         type="email" 
+                         placeholder="Email for order updates (optional)" 
+                         className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] pl-12 md:pl-16 pr-4 md:pr-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" 
+                         value={shippingAddress.email || ''} 
+                         onChange={e => setShippingAddress({...shippingAddress, email: e.target.value})} 
+                       />
                      </div>
-                     <input type="text" placeholder="Shipping Street Address" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.street} onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} />
+                     <div className="relative">
+                       <input 
+                         type="text" 
+                         placeholder="Shipping Street Address *" 
+                         className={`w-full bg-white/5 border rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base transition-colors ${
+                           getFieldError('street') ? 'border-red-500/50' : 'border-white/10'
+                         }`}
+                         value={shippingAddress.street} 
+                         onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} 
+                       />
+                       {getFieldError('street') && (
+                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-400 text-xs">{getFieldError('street')}</span>
+                       )}
+                     </div>
                      <div className="grid grid-cols-3 gap-2 md:gap-5">
-                       <input type="text" placeholder="City" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} />
-                       <input type="text" placeholder="State" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.state} onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} />
-                       <input type="text" placeholder="Zip" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} />
+                       <div className="relative col-span-1">
+                         <input 
+                           type="text" 
+                           placeholder="City *" 
+                           className={`w-full bg-white/5 border rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base transition-colors ${
+                             getFieldError('city') ? 'border-red-500/50' : 'border-white/10'
+                           }`}
+                           value={shippingAddress.city} 
+                           onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} 
+                         />
+                       </div>
+                       <div className="relative col-span-1">
+                         <input 
+                           type="text" 
+                           placeholder="State *" 
+                           className={`w-full bg-white/5 border rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base transition-colors ${
+                             getFieldError('state') ? 'border-red-500/50' : 'border-white/10'
+                           }`}
+                           value={shippingAddress.state} 
+                           onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} 
+                         />
+                       </div>
+                       <div className="relative col-span-1">
+                         <input 
+                           type="text" 
+                           placeholder="Zip *" 
+                           className={`w-full bg-white/5 border rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base transition-colors ${
+                             getFieldError('zip') ? 'border-red-500/50' : 'border-white/10'
+                           }`}
+                           value={shippingAddress.zip} 
+                           onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} 
+                         />
+                       </div>
                      </div>
+                     <p className="text-gray-500 text-xs">* Required fields</p>
                    </div>
                  </div>
                  <div className="bg-emerald-500/5 p-4 md:p-8 rounded-2xl md:rounded-[36px] border border-emerald-500/20 flex gap-4 md:gap-6">
@@ -741,12 +849,72 @@ const App: React.FC = () => {
                       <div className="flex justify-between text-xl md:text-3xl lg:text-4xl font-heading font-black pt-6 md:pt-10 text-white tracking-tighter"><span>TOTAL</span><span className="text-emerald-400">{((bridgedProduct?.price || 0) * 1.05).toFixed(2)} USDC</span></div>
                     </div>
                  </div>
+                 {/* Validation message */}
+                 {formTouched && !isFormValid && (
+                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 md:p-4 mb-4">
+                     <p className="text-red-400 text-xs md:text-sm font-medium flex items-center gap-2">
+                       <AlertCircle className="w-4 h-4 shrink-0" />
+                       Please fill in all required shipping fields
+                     </p>
+                   </div>
+                 )}
+                 
+                 {/* Error message */}
+                 {checkoutError && (
+                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 md:p-4 mb-4">
+                     <p className="text-red-400 text-xs md:text-sm font-medium flex items-center gap-2">
+                       <AlertCircle className="w-4 h-4 shrink-0" />
+                       {checkoutError}
+                     </p>
+                     <button 
+                       onClick={() => setCheckoutError(null)}
+                       className="text-red-400/70 text-xs mt-2 hover:text-red-400 transition-colors"
+                     >
+                       Dismiss
+                     </button>
+                   </div>
+                 )}
+                 
+                 {/* Processing status */}
+                 {isProcessingTx && checkoutStep && (
+                   <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 md:p-4 mb-4">
+                     <p className="text-emerald-400 text-xs md:text-sm font-medium flex items-center gap-2">
+                       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                       {checkoutStep}
+                     </p>
+                   </div>
+                 )}
+                 
                  <button 
-                   onClick={handleFinalCheckout} 
-                   disabled={isProcessingTx || (!isDemoMode && !connected)} 
-                   className="w-full bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40 text-black font-black py-5 md:py-7 rounded-xl md:rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-3 md:gap-4 disabled:opacity-50 text-base md:text-xl lg:text-2xl tracking-tighter"
+                   onClick={() => {
+                     setFormTouched(true);
+                     if (isFormValid) {
+                       handleFinalCheckout();
+                     }
+                   }} 
+                   disabled={isProcessingTx || (!isDemoMode && !connected) || (formTouched && !isFormValid)} 
+                   className={`w-full font-black py-5 md:py-7 rounded-xl md:rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-3 md:gap-4 text-base md:text-xl lg:text-2xl tracking-tighter ${
+                     isProcessingTx 
+                       ? 'bg-emerald-500/50 text-black/50 cursor-wait'
+                       : formTouched && !isFormValid
+                         ? 'bg-gray-500/50 text-gray-400 cursor-not-allowed'
+                         : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40 text-black'
+                   } disabled:opacity-50`}
                  >
-                   {isProcessingTx ? <Loader2 className="w-6 md:w-8 h-6 md:h-8 animate-spin" /> : isDemoMode ? 'DEMO PURCHASE' : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET'}
+                   {isProcessingTx ? (
+                     <>
+                       <Loader2 className="w-6 md:w-8 h-6 md:h-8 animate-spin" />
+                       Processing...
+                     </>
+                   ) : !isFormValid && formTouched ? (
+                     'COMPLETE FORM ABOVE'
+                   ) : isDemoMode ? (
+                     'DEMO PURCHASE'
+                   ) : connected ? (
+                     'INITIATE BRIDGE'
+                   ) : (
+                     'CONNECT WALLET'
+                   )}
                  </button>
                </div>
             </div>
