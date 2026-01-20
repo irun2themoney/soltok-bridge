@@ -194,31 +194,41 @@ const App: React.FC = () => {
     };
 
     const sequence = async () => {
+      // Step 1: Escrow Lock
       addLog("TX: Signing Solana bridge contract...");
       updateStep('1', 'processing');
       await new Promise(r => setTimeout(r, 2000));
       updateStep('1', 'completed');
+      toast.success("Escrow Locked", "Your USDC is secured in the bridge contract.");
 
+      // Step 2: Fiat Off-Ramp
       addLog("FIAT: Initiating USDC -> USD settlement...");
       updateStep('2', 'processing');
       await new Promise(r => setTimeout(r, 3000));
       updateStep('2', 'completed');
+      toast.success("Payment Settled", "USDC converted to USD via Bridge.xyz");
 
+      // Step 3: VCC Issuance
       addLog("VCC: Minting single-use virtual card...");
       updateStep('3', 'processing');
       await new Promise(r => setTimeout(r, 2500));
       updateStep('3', 'completed');
+      toast.info("Virtual Card Ready", "Single-use payment card generated.");
 
+      // Step 4: Proxy Purchase
       addLog("BOT: Headless TikTok checkout session started...");
       updateStep('4', 'processing');
       await new Promise(r => setTimeout(r, 4000));
       updateStep('4', 'completed');
+      toast.success("Purchase Complete", "TikTok Shop order placed successfully!");
 
+      // Step 5: Tracking Sync
       addLog("SHIP: Carrier labels generated. Finalized.");
       updateStep('5', 'processing');
       await new Promise(r => setTimeout(r, 2000));
       updateStep('5', 'completed');
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      toast.success("Order Shipped!", "Tracking info synced. Your package is on the way!");
     };
 
     sequence();
