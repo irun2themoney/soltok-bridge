@@ -1,0 +1,118 @@
+{
+  "version": "0.1.0",
+  "name": "soltok_escrow",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        { "name": "config", "isMut": true, "isSigner": false },
+        { "name": "admin", "isMut": true, "isSigner": true },
+        { "name": "treasury", "isMut": false, "isSigner": false },
+        { "name": "fulfillmentVault", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "treasuryFeeBps", "type": "u16" }
+      ]
+    },
+    {
+      "name": "createEscrow",
+      "accounts": [
+        { "name": "config", "isMut": true, "isSigner": false },
+        { "name": "escrow", "isMut": true, "isSigner": false },
+        { "name": "escrowVault", "isMut": true, "isSigner": false },
+        { "name": "buyer", "isMut": true, "isSigner": true },
+        { "name": "buyerTokenAccount", "isMut": true, "isSigner": false },
+        { "name": "usdcMint", "isMut": false, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false },
+        { "name": "rent", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "orderId", "type": "string" },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "releaseEscrow",
+      "accounts": [
+        { "name": "config", "isMut": true, "isSigner": false },
+        { "name": "escrow", "isMut": true, "isSigner": false },
+        { "name": "escrowVault", "isMut": true, "isSigner": false },
+        { "name": "treasury", "isMut": true, "isSigner": false },
+        { "name": "fulfillmentVault", "isMut": true, "isSigner": false },
+        { "name": "admin", "isMut": false, "isSigner": true },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "refundEscrow",
+      "accounts": [
+        { "name": "config", "isMut": false, "isSigner": false },
+        { "name": "escrow", "isMut": true, "isSigner": false },
+        { "name": "escrowVault", "isMut": true, "isSigner": false },
+        { "name": "buyerTokenAccount", "isMut": true, "isSigner": false },
+        { "name": "admin", "isMut": false, "isSigner": true },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EscrowConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "admin", "type": "publicKey" },
+          { "name": "treasury", "type": "publicKey" },
+          { "name": "fulfillmentVault", "type": "publicKey" },
+          { "name": "treasuryFeeBps", "type": "u16" },
+          { "name": "totalDeposits", "type": "u64" },
+          { "name": "totalReleased", "type": "u64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "Escrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "buyer", "type": "publicKey" },
+          { "name": "orderId", "type": "string" },
+          { "name": "amount", "type": "u64" },
+          { "name": "feeAmount", "type": "u64" },
+          { "name": "fulfillmentAmount", "type": "u64" },
+          { "name": "status", "type": { "defined": "EscrowStatus" } },
+          { "name": "createdAt", "type": "i64" },
+          { "name": "releasedAt", "type": { "option": "i64" } },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "EscrowStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Locked" },
+          { "name": "Released" },
+          { "name": "Refunded" }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "FeeTooHigh", "msg": "Fee percentage too high (max 10%)" },
+    { "code": 6001, "name": "OrderIdTooLong", "msg": "Order ID too long (max 32 characters)" },
+    { "code": 6002, "name": "InvalidAmount", "msg": "Invalid amount" },
+    { "code": 6003, "name": "InvalidStatus", "msg": "Invalid escrow status for this operation" }
+  ],
+  "metadata": {
+    "address": "3pMM6KnPpxc1mhprcPGb7oLLi5skDmcVAvDb4sq4nS1L"
+  }
+}

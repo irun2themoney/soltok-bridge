@@ -1,0 +1,468 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  ShoppingBag, 
+  Wallet, 
+  ArrowRight,
+  X,
+  CreditCard,
+  ArrowRightLeft,
+  Activity,
+  MapPin,
+  ExternalLink,
+  Loader2,
+  Globe,
+  Link as LinkIcon,
+  ShieldCheck,
+  AlertCircle,
+  Truck,
+  ImageOff
+} from 'lucide-react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { AppSection, TikTokProduct, ShippingAddress, Order, FulfillmentStep } from './types';
+import { getProductFromUrl } from './services/geminiService';
+import { useEscrow } from './src/hooks/useEscrow';
+import ArchitectureView from './components/ArchitectureView';
+import FulfillmentTracker from './components/FulfillmentTracker';
+
+const INITIAL_STEPS: FulfillmentStep[] = [
+  { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
+  { id: '2', label: 'Fiat Off-Ramp', status: 'pending', description: 'Settling USDC to USD via Bridge.xyz.', icon: 'bridge' },
+  { id: '3', label: 'VCC Issuance', status: 'pending', description: 'Generating proxy card for checkout.', icon: 'card' },
+  { id: '4', label: 'Proxy Purchase', status: 'pending', description: 'Automated TikTok Shop execution.', icon: 'cart' },
+  { id: '5', label: 'Tracking Sync', status: 'pending', description: 'Finalizing carrier tracking.', icon: 'truck' },
+];
+
+const App: React.FC = () => {
+  // Solana wallet adapter hooks
+  const { publicKey, connected, connecting } = useWallet();
+  
+  // Escrow hook for blockchain transactions
+  const { createEscrow, checkUsdcBalance, isProcessing: isEscrowProcessing, error: escrowError } = useEscrow();
+  
+  const [activeSection, setActiveSection] = useState<AppSection>(AppSection.BROWSE);
+  const [urlInput, setUrlInput] = useState('');
+  const [bridgedProduct, setBridgedProduct] = useState<TikTokProduct | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [isProcessingTx, setIsProcessingTx] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  // Helper to format wallet address
+  const formatWalletAddress = (address: string) => {
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
+  };
+  
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
+    fullName: '', street: '', city: '', state: '', zip: ''
+  });
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('soltok_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => localStorage.setItem('soltok_orders', JSON.stringify(orders)), [orders]);
+
+  const addLog = useCallback((msg: string) => {
+    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLogs(prev => [`[${time}] ${msg}`, ...prev.slice(0, 15)]);
+  }, []);
+
+  const handleFetchProduct = async () => {
+    if (!urlInput.includes('tiktok.com')) {
+      addLog("ERROR: Please provide a valid TikTok link.");
+      return;
+    }
+    setLoading(true);
+    setBridgedProduct(null);
+    setImageError(false);
+    addLog(`INIT: Researching TikTok Link via Google Grounding...`);
+    try {
+      const product = await getProductFromUrl(urlInput);
+      setBridgedProduct(product);
+      addLog(`FOUND: ${product.title} verified at $${product.price}`);
+    } catch (err) {
+      addLog(`ERROR: Grounding failed. Link may be private or invalid.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runFulfillmentSim = (orderId: string) => {
+    const updateStep = (stepId: string, status: FulfillmentStep['status']) => {
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        steps: o.steps.map(s => s.id === stepId ? { ...s, status } : s)
+      } : o));
+    };
+
+    const sequence = async () => {
+      addLog("TX: Signing Solana bridge contract...");
+      updateStep('1', 'processing');
+      await new Promise(r => setTimeout(r, 2000));
+      updateStep('1', 'completed');
+
+      addLog("FIAT: Initiating USDC -> USD settlement...");
+      updateStep('2', 'processing');
+      await new Promise(r => setTimeout(r, 3000));
+      updateStep('2', 'completed');
+
+      addLog("VCC: Minting single-use virtual card...");
+      updateStep('3', 'processing');
+      await new Promise(r => setTimeout(r, 2500));
+      updateStep('3', 'completed');
+
+      addLog("BOT: Headless TikTok checkout session started...");
+      updateStep('4', 'processing');
+      await new Promise(r => setTimeout(r, 4000));
+      updateStep('4', 'completed');
+
+      addLog("SHIP: Carrier labels generated. Finalized.");
+      updateStep('5', 'processing');
+      await new Promise(r => setTimeout(r, 2000));
+      updateStep('5', 'completed');
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+    };
+
+    sequence();
+  };
+
+  const handleFinalCheckout = async () => {
+    if (!shippingAddress.fullName || !shippingAddress.street) {
+      addLog("ERROR: Please provide shipping details.");
+      alert("Please provide shipping details.");
+      return;
+    }
+    
+    if (!connected || !publicKey) {
+      addLog("ERROR: Wallet not connected.");
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    const totalAmount = (bridgedProduct?.price || 0) * 1.05;
+    
+    // Check USDC balance
+    addLog("BALANCE: Checking USDC balance...");
+    const { sufficient, balance } = await checkUsdcBalance(totalAmount);
+    
+    if (!sufficient) {
+      addLog(`ERROR: Insufficient USDC balance. Have ${balance.toFixed(2)}, need ${totalAmount.toFixed(2)}`);
+      alert(`Insufficient USDC balance. You have ${balance.toFixed(2)} USDC but need ${totalAmount.toFixed(2)} USDC.`);
+      return;
+    }
+    
+    addLog(`BALANCE: ${balance.toFixed(2)} USDC available. Proceeding...`);
+    setIsProcessingTx(true);
+    
+    // Generate order ID
+    const orderId = `ST-${Math.floor(Math.random() * 9000) + 1000}`;
+    
+    addLog("TX: Initiating escrow deposit transaction...");
+    
+    try {
+      // Create escrow on Solana
+      const escrowResult = await createEscrow(orderId, totalAmount);
+      
+      if (!escrowResult.success) {
+        throw new Error(escrowResult.error || 'Failed to create escrow');
+      }
+      
+      addLog(`TX: Escrow locked! Signature: ${escrowResult.txHash?.slice(0, 8)}...`);
+      
+      // Create order record
+      const newOrder: Order = {
+        id: orderId,
+        products: bridgedProduct ? [{ product: bridgedProduct, quantity: 1 }] : [],
+        totalUsdc: totalAmount,
+        status: 'paid',
+        txHash: escrowResult.txHash || '',
+        shippingAddress: { ...shippingAddress },
+        timestamp: new Date().toLocaleString(),
+        steps: [...INITIAL_STEPS]
+      };
+
+      // Submit order to backend API
+      addLog("API: Submitting order to backend...");
+      try {
+        const apiResponse = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            txHash: escrowResult.txHash,
+            escrowPda: escrowResult.escrowPDA,
+            buyerPubkey: publicKey.toBase58(),
+            product: bridgedProduct,
+            totalUsdc: totalAmount,
+            shippingAddress
+          })
+        });
+        
+        if (apiResponse.ok) {
+          addLog("API: Order confirmed by backend.");
+        } else {
+          addLog("API: Backend unavailable, order stored locally.");
+        }
+      } catch (apiError) {
+        addLog("API: Backend unavailable, order stored locally.");
+      }
+
+      // Update local state
+      setOrders([newOrder, ...orders]);
+      setIsCheckoutOpen(false);
+      setActiveSection(AppSection.DASHBOARD);
+      
+      // Start fulfillment simulation
+      runFulfillmentSim(newOrder.id);
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
+      addLog(`ERROR: ${errorMsg}`);
+      alert(`Transaction failed: ${errorMsg}`);
+    } finally {
+      setIsProcessingTx(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#050505] selection:bg-emerald-500/30">
+      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-8 py-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveSection(AppSection.BROWSE)}>
+            <div className="bg-emerald-500 p-2.5 rounded-xl shadow-lg shadow-emerald-500/20"><ArrowRightLeft className="w-6 h-6 text-black" /></div>
+            <span className="font-heading text-2xl font-bold">SolTok<span className="text-emerald-500">Bridge</span></span>
+          </div>
+          <div className="hidden md:flex items-center gap-10 text-xs font-bold uppercase tracking-widest text-gray-500">
+            <button onClick={() => setActiveSection(AppSection.BROWSE)} className={`hover:text-white transition-colors ${activeSection === AppSection.BROWSE ? 'text-emerald-400' : ''}`}>Bridge Tool</button>
+            <button onClick={() => setActiveSection(AppSection.DASHBOARD)} className={`hover:text-white transition-colors ${activeSection === AppSection.DASHBOARD ? 'text-emerald-400' : ''}`}>My Orders {orders.length > 0 && `(${orders.length})`}</button>
+            <button onClick={() => setActiveSection(AppSection.ARCHITECTURE)} className={`hover:text-white transition-colors ${activeSection === AppSection.ARCHITECTURE ? 'text-emerald-400' : ''}`}>Protocol</button>
+          </div>
+          <div className="wallet-adapter-button-wrapper">
+            <WalletMultiButton className={`!px-6 !py-3 !rounded-xl !font-bold !text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
+          </div>
+        </div>
+      </nav>
+
+      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-16">
+        {activeSection === AppSection.BROWSE && (
+          <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="text-center space-y-6">
+              <h1 className="text-7xl font-heading font-bold tracking-tighter leading-none">Bridge any item <br/> to <span className="text-emerald-400">Solana.</span></h1>
+              <p className="text-gray-500 text-xl max-w-xl mx-auto font-light leading-relaxed">Paste a TikTok Shop URL. We verify the price live using Google Grounding and bridge your USDC to the merchant.</p>
+            </div>
+
+            <div className="relative glass p-3 rounded-[36px] border-white/10 shadow-3xl max-w-2xl mx-auto">
+              <div className="flex items-center gap-4 p-1">
+                <div className="flex-1 relative">
+                  <LinkIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-emerald-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Paste TikTok Shop URL..." 
+                    className="w-full bg-white/5 border-none rounded-[28px] py-7 pl-16 pr-8 text-xl focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none"
+                    value={urlInput}
+                    onChange={e => setUrlInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleFetchProduct()}
+                  />
+                </div>
+                <button 
+                  onClick={handleFetchProduct}
+                  disabled={loading || !urlInput}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-black h-[84px] px-10 rounded-[28px] transition-all flex items-center gap-3 disabled:opacity-50 shadow-2xl shadow-emerald-500/20"
+                >
+                  {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : 'VERIFY'}
+                </button>
+              </div>
+            </div>
+
+            {loading && (
+              <div className="text-center space-y-4 animate-pulse">
+                <div className="inline-flex items-center gap-3 text-emerald-400 font-mono text-xs uppercase tracking-widest">
+                  <Globe className="w-4 h-4 animate-spin-slow" /> Grounding Live Data...
+                </div>
+              </div>
+            )}
+
+            {bridgedProduct && !loading && (
+              <div className="max-w-xl mx-auto glass p-10 rounded-[48px] border-emerald-500/20 animate-in zoom-in-95 duration-500 shadow-2xl">
+                <div className="flex flex-col gap-10">
+                  <div className="flex gap-8 items-start">
+                    <div className="w-32 h-32 rounded-3xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center shrink-0">
+                      {imageError ? (
+                        <div className="flex flex-col items-center text-gray-600">
+                          <ImageOff className="w-8 h-8" />
+                          <span className="text-[8px] font-bold mt-2">LINK HIDDEN</span>
+                        </div>
+                      ) : (
+                        <img 
+                          src={bridgedProduct.imageUrl} 
+                          className="w-full h-full object-cover" 
+                          alt="Item" 
+                          onError={() => {
+                            console.warn("TikTok image blocked by CORS/Hotlink. Using fallback visual.");
+                            setImageError(true);
+                          }}
+                        />
+                      )}
+                      {imageError && (
+                         <img 
+                            src={`https://picsum.photos/seed/${bridgedProduct.id}/300`} 
+                            className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm"
+                         />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full">{bridgedProduct.category}</span>
+                      <h3 className="text-2xl font-bold leading-tight">{bridgedProduct.title}</h3>
+                      <p className="text-gray-500 text-sm">Merchant: {bridgedProduct.seller}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 py-8 border-y border-white/5">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Market Price</p>
+                      <p className="text-4xl font-heading font-bold">${bridgedProduct.price}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Status</p>
+                      <p className="text-emerald-400 font-bold flex items-center justify-end gap-2"><ShieldCheck className="w-5 h-5" /> Verified Link</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsCheckoutOpen(true)}
+                    className="w-full bg-white text-black font-black py-6 rounded-3xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-3 text-xl shadow-xl shadow-white/5"
+                  >
+                    <CreditCard className="w-6 h-6" /> PAY WITH USDC
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeSection === AppSection.DASHBOARD && (
+          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+             <div className="grid grid-cols-1 gap-12">
+                <div className="space-y-8">
+                  {orders.length === 0 ? (
+                    <div className="glass p-24 text-center rounded-[48px] border-white/5 space-y-6">
+                      <Activity className="w-16 h-16 text-gray-700 mx-auto" />
+                      <h3 className="text-2xl font-bold text-gray-400">No active bridges.</h3>
+                      <button onClick={() => setActiveSection(AppSection.BROWSE)} className="text-emerald-400 font-bold uppercase tracking-widest text-xs hover:underline">Start your first bridge</button>
+                    </div>
+                  ) : (
+                    orders.map(order => (
+                      <div key={order.id} className="glass p-10 rounded-[48px] border border-white/5 relative overflow-hidden group">
+                         <div className="flex justify-between items-start mb-12">
+                           <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-emerald-400 text-[10px] font-black tracking-tighter uppercase px-2 py-1 bg-emerald-500/10 rounded-md">Order Locked</span>
+                              </div>
+                              <h2 className="text-4xl font-heading font-bold">#{order.id}</h2>
+                              <p className="text-gray-500 text-xs mt-2">{order.timestamp}</p>
+                           </div>
+                           <div className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest border ${order.status === 'shipped' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-blue-500 text-blue-400 animate-pulse'}`}>
+                              {order.status.toUpperCase()}
+                           </div>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                            <div className="bg-white/[0.02] p-8 rounded-3xl space-y-4 border border-white/5">
+                               <h4 className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 tracking-widest"><MapPin className="w-4 h-4 text-emerald-400" /> Shipping Info</h4>
+                               <p className="text-lg font-bold">{order.shippingAddress.fullName}</p>
+                               <p className="text-sm text-gray-500 leading-relaxed">{order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.zip}</p>
+                            </div>
+                            <div className="bg-white/[0.02] p-8 rounded-3xl space-y-4 border border-white/5">
+                               <h4 className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 tracking-widest"><ExternalLink className="w-4 h-4 text-purple-400" /> On-Chain Data</h4>
+                               <div className="flex justify-between text-sm"><span className="text-gray-500">Value</span><span className="font-bold text-emerald-400">{order.totalUsdc.toFixed(2)} USDC</span></div>
+                               <div className="flex justify-between text-xs font-mono"><span className="text-gray-500">Sig</span><span className="text-gray-400 truncate ml-8">{order.txHash}</span></div>
+                            </div>
+                         </div>
+                         <FulfillmentTracker steps={order.steps} isGlobal={order.status !== 'shipped'} />
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="glass p-8 rounded-[36px] border border-white/5 h-fit">
+                   <h3 className="text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-2 text-gray-500"><Activity className="w-4 h-4 text-emerald-400" /> Network Log</h3>
+                   <div className="bg-black/60 rounded-2xl p-6 font-mono text-[10px] text-gray-500 space-y-3 overflow-auto max-h-[300px] border border-white/5 custom-scrollbar">
+                      {logs.map((l, i) => <div key={i} className={i === 0 ? 'text-emerald-400' : ''}>{l}</div>)}
+                      {logs.length === 0 && <div className="italic text-center py-8">Awaiting telemetry...</div>}
+                   </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {activeSection === AppSection.ARCHITECTURE && <ArchitectureView />}
+      </main>
+
+      {isCheckoutOpen && bridgedProduct && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl" onClick={() => setIsCheckoutOpen(false)} />
+          <div className="relative glass w-full max-w-5xl rounded-[64px] p-16 shadow-2xl overflow-y-auto max-h-[90vh] border border-white/10 animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-16">
+              <h2 className="text-5xl font-heading font-bold tracking-tighter">Bridge Settlement</h2>
+              <button onClick={() => setIsCheckoutOpen(false)} className="bg-white/5 hover:bg-white/10 p-4 rounded-full transition-transform hover:rotate-90">
+                <X className="w-8 h-8" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+               <div className="space-y-12">
+                 <div className="space-y-8">
+                   <h3 className="text-xl font-bold flex items-center gap-3"><MapPin className="w-7 h-7 text-emerald-400" /> Fulfillment Address</h3>
+                   <div className="grid grid-cols-1 gap-5">
+                     <input type="text" placeholder="Full Recipient Name" className="w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.fullName} onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} />
+                     <input type="text" placeholder="Shipping Street Address" className="w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.street} onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} />
+                     <div className="grid grid-cols-3 gap-5">
+                       <input type="text" placeholder="City" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} />
+                       <input type="text" placeholder="State" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.state} onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} />
+                       <input type="text" placeholder="Zip" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} />
+                     </div>
+                   </div>
+                 </div>
+                 <div className="bg-emerald-500/5 p-8 rounded-[36px] border border-emerald-500/20 flex gap-6">
+                    <AlertCircle className="w-8 h-8 text-emerald-400 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Escrow Mechanism</h4>
+                      <p className="text-xs text-gray-500 leading-relaxed font-medium">Your USDC is locked in the bridge contract. The proxy agent only triggers USD off-ramping once the merchant confirms inventory availability for this specific TikTok Shop SKU.</p>
+                    </div>
+                 </div>
+               </div>
+
+               <div className="bg-white/[0.02] p-12 rounded-[56px] border border-white/5 space-y-12 h-fit">
+                 <div className="space-y-8">
+                    <h3 className="text-xl font-bold flex items-center gap-3 text-purple-400"><CreditCard className="w-7 h-7" /> Payout Summary</h3>
+                    <div className="flex gap-8 items-center bg-white/5 p-6 rounded-[32px] border border-white/5">
+                       <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
+                          {imageError ? <ImageOff className="w-6 h-6 text-gray-700" /> : <img src={bridgedProduct.imageUrl} className="w-full h-full object-cover" />}
+                       </div>
+                       <div className="flex-1"><h4 className="text-base font-bold line-clamp-1">{bridgedProduct.title}</h4><p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">TikTok Verified</p></div>
+                       <span className="text-xl font-bold font-heading">${bridgedProduct.price}</span>
+                    </div>
+                    <div className="pt-10 border-t border-white/10 space-y-4">
+                      <div className="flex justify-between text-sm text-gray-500 font-bold uppercase tracking-widest"><span>Item Cost</span><span>${bridgedProduct.price.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-sm text-emerald-400 font-bold uppercase tracking-widest"><span>Bridge Fee (5%)</span><span>${((bridgedProduct?.price || 0) * 0.05).toFixed(2)}</span></div>
+                      <div className="flex justify-between text-4xl font-heading font-black pt-10 text-white tracking-tighter"><span>TOTAL DUE</span><span className="text-emerald-400">{((bridgedProduct?.price || 0) * 1.05).toFixed(2)} USDC</span></div>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={handleFinalCheckout} 
+                   disabled={isProcessingTx || !connected} 
+                   className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-7 rounded-[32px] transition-all shadow-3xl shadow-emerald-500/40 flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter"
+                 >
+                   {isProcessingTx ? <Loader2 className="w-8 h-8 animate-spin" /> : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET TO PAY'}
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;

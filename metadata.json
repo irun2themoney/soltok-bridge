@@ -1,0 +1,8 @@
+{
+  "name": "SolTok Bridge",
+  "description": "A high-fidelity platform bridging TikTok Shop and the Solana ecosystem, enabling seamless USDC-to-fiat proxy buying and automated fulfillment.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
