@@ -30,6 +30,7 @@ import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
 import DemoModeBanner from './components/DemoModeBanner';
 import { DatabaseStatus, OrderCardSkeleton } from './components/Skeleton';
+import { StatsCounter, OrderSuccessModal, fireConfetti } from './components/Celebration';
 import OperatorDashboard from './components/OperatorDashboard';
 import OperatorLogin from './components/OperatorLogin';
 import ProductGallery from './components/ProductGallery';
@@ -80,6 +81,13 @@ const App: React.FC = () => {
   });
   const [showOperatorLogin, setShowOperatorLogin] = useState(false);
   const [showOperatorDashboard, setShowOperatorDashboard] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastOrderDetails, setLastOrderDetails] = useState<{
+    orderId: string;
+    productName: string;
+    amount: number;
+    buyerNumber: number;
+  } | null>(null);
   
   // Helper to format wallet address
   const formatWalletAddress = (address: string) => {
@@ -331,11 +339,18 @@ const App: React.FC = () => {
       // Save order (Supabase + localStorage)
       await addOrder(newOrder);
       setIsCheckoutOpen(false);
-      setActiveSection(AppSection.DASHBOARD);
       
-      // Show success toast
-      const dbNote = supabaseEnabled ? ' (synced to cloud)' : '';
-      toast.success("Order Created!", `Your order ${newOrder.id} is now being processed.${dbNote}`);
+      // Generate a buyer number (simulated - in production this would come from DB)
+      const buyerNumber = 12847 + orders.length + Math.floor(Math.random() * 100);
+      
+      // Show celebration modal
+      setLastOrderDetails({
+        orderId: newOrder.id,
+        productName: bridgedProduct.name,
+        amount: totalAmount,
+        buyerNumber,
+      });
+      setShowSuccessModal(true);
       
       // Start fulfillment simulation
       runFulfillmentSim(newOrder.id);
@@ -403,6 +418,9 @@ const App: React.FC = () => {
             <div className="text-center space-y-4 md:space-y-6">
               <h1 className="text-4xl md:text-7xl font-heading font-bold tracking-tighter leading-none">Bridge any item <br/> to <span className="text-emerald-400">Solana.</span></h1>
               <p className="text-gray-500 text-base md:text-xl max-w-xl mx-auto font-light leading-relaxed px-4">Paste a TikTok Shop URL. We verify the price live using Google Grounding and bridge your USDC to the merchant.</p>
+              
+              {/* Live Stats */}
+              <StatsCounter className="max-w-2xl mx-auto mt-8" />
             </div>
 
             <div className="relative glass p-3 rounded-[36px] border-white/10 shadow-3xl max-w-2xl mx-auto">
@@ -688,6 +706,21 @@ const App: React.FC = () => {
             />
           </div>
         </div>
+      )}
+      
+      {/* Order Success Modal with Confetti */}
+      {lastOrderDetails && (
+        <OrderSuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            setActiveSection(AppSection.DASHBOARD);
+          }}
+          orderId={lastOrderDetails.orderId}
+          productName={lastOrderDetails.productName}
+          amount={lastOrderDetails.amount}
+          buyerNumber={lastOrderDetails.buyerNumber}
+        />
       )}
     </div>
   );
