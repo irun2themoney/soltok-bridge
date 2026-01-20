@@ -1,29 +1,35 @@
 // SolTok Bridge - Background Service Worker
 
+console.log('[SolTok Background] Service worker starting...');
+
 // Store current product data
 let currentProduct = null;
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[SolTok Background] Message received:', message.type);
+  console.log('[SolTok Background] Message received:', message.type, message);
 
   if (message.type === 'OPEN_CHECKOUT') {
     currentProduct = message.product;
+    console.log('[SolTok Background] Storing product:', message.product);
     
     // Store product data
     chrome.storage.local.set({ currentProduct: message.product }, () => {
-      console.log('[SolTok Background] Product stored:', message.product);
+      if (chrome.runtime.lastError) {
+        console.error('[SolTok Background] Storage error:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError });
+      } else {
+        console.log('[SolTok Background] Product stored successfully!');
+        sendResponse({ success: true });
+      }
     });
-
-    // Open the popup programmatically
-    // Note: In MV3, we can't open popup directly, but we can use action.openPopup() in some contexts
-    // For now, we'll notify the popup when it opens
     
-    sendResponse({ success: true });
+    return true; // Keep channel open for async response
   }
 
   if (message.type === 'GET_PRODUCT') {
     chrome.storage.local.get(['currentProduct'], (result) => {
+      console.log('[SolTok Background] GET_PRODUCT result:', result);
       sendResponse({ product: result.currentProduct || null });
     });
     return true; // Keep channel open for async response
@@ -31,8 +37,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CLEAR_PRODUCT') {
     currentProduct = null;
-    chrome.storage.local.remove(['currentProduct']);
-    sendResponse({ success: true });
+    chrome.storage.local.remove(['currentProduct'], () => {
+      console.log('[SolTok Background] Product cleared');
+      sendResponse({ success: true });
+    });
+    return true;
   }
 
   if (message.type === 'SAVE_ORDER') {
@@ -43,6 +52,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Keep only last 50 orders
       if (orders.length > 50) orders.pop();
       chrome.storage.local.set({ orders }, () => {
+        console.log('[SolTok Background] Order saved');
         sendResponse({ success: true });
       });
     });

@@ -1,5 +1,7 @@
 // SolTok Bridge - Popup Script
 
+console.log('[SolTok Popup] Script loaded');
+
 // Configuration
 const CONFIG = {
   rpcUrl: 'https://api.devnet.solana.com',
@@ -14,38 +16,12 @@ let currentProduct = null;
 let walletAddress = null;
 let walletBalance = 0;
 
-// DOM Elements
-const elements = {
-  stateNoProduct: document.getElementById('state-no-product'),
-  stateCheckout: document.getElementById('state-checkout'),
-  stateSuccess: document.getElementById('state-success'),
-  productImage: document.getElementById('product-image'),
-  productTitle: document.getElementById('product-title'),
-  productSeller: document.getElementById('product-seller'),
-  productPrice: document.getElementById('product-price'),
-  breakdownPrice: document.getElementById('breakdown-price'),
-  breakdownFee: document.getElementById('breakdown-fee'),
-  breakdownTotal: document.getElementById('breakdown-total'),
-  shipName: document.getElementById('ship-name'),
-  shipStreet: document.getElementById('ship-street'),
-  shipCity: document.getElementById('ship-city'),
-  shipState: document.getElementById('ship-state'),
-  shipZip: document.getElementById('ship-zip'),
-  shipEmail: document.getElementById('ship-email'),
-  walletDisconnected: document.getElementById('wallet-disconnected'),
-  walletConnected: document.getElementById('wallet-connected'),
-  walletAddress: document.getElementById('wallet-address'),
-  walletBalance: document.getElementById('wallet-balance'),
-  btnConnect: document.getElementById('btn-connect'),
-  btnDisconnect: document.getElementById('btn-disconnect'),
-  btnPay: document.getElementById('btn-pay'),
-  btnPayText: document.getElementById('btn-pay-text'),
-  txLink: document.getElementById('tx-link'),
-  btnNewOrder: document.getElementById('btn-new-order'),
-};
+// DOM Elements - will be set after DOM loads
+let elements = {};
 
 // Show a specific state
 function showState(state) {
+  console.log('[SolTok Popup] Showing state:', state);
   elements.stateNoProduct.classList.remove('active');
   elements.stateCheckout.classList.remove('active');
   elements.stateSuccess.classList.remove('active');
@@ -57,6 +33,8 @@ function showState(state) {
 
 // Update product display
 function updateProductDisplay(product) {
+  console.log('[SolTok Popup] Updating product display:', product);
+  
   if (!product) {
     showState('no-product');
     return;
@@ -75,7 +53,7 @@ function updateProductDisplay(product) {
     elements.productImage.classList.remove('placeholder');
   } else {
     elements.productImage.classList.add('placeholder');
-    elements.productImage.innerHTML = '📦';
+    elements.productImage.src = '';
   }
   
   // Update price breakdown
@@ -87,6 +65,7 @@ function updateProductDisplay(product) {
   elements.breakdownTotal.textContent = `$${total.toFixed(2)} USDC`;
   
   showState('checkout');
+  updateWalletDisplay();
 }
 
 // Update wallet display
@@ -132,36 +111,30 @@ function validateForm() {
 
 // Connect wallet (simplified - in real extension would use Phantom API)
 async function connectWallet() {
+  console.log('[SolTok Popup] Connecting wallet...');
   try {
     // Check if Phantom is available
     const phantom = window.phantom?.solana || window.solana;
     
-    if (!phantom) {
-      // Open Phantom install page
-      window.open('https://phantom.app/', '_blank');
+    if (phantom && phantom.isPhantom) {
+      const response = await phantom.connect();
+      walletAddress = response.publicKey.toString();
+      walletBalance = 100; // Demo balance for now
+      
+      // Store wallet address
+      chrome.storage.local.set({ walletAddress, walletBalance });
+      updateWalletDisplay();
       return;
     }
-
-    const response = await phantom.connect();
-    walletAddress = response.publicKey.toString();
-    
-    // Store wallet address
-    chrome.storage.local.set({ walletAddress });
-    
-    // Get USDC balance
-    await fetchBalance();
-    
-    updateWalletDisplay();
-    
   } catch (error) {
-    console.error('Wallet connection failed:', error);
-    
-    // For demo/testing, simulate a wallet connection
-    walletAddress = 'Demo' + Math.random().toString(36).slice(2, 8);
-    walletBalance = 100; // Demo balance
-    chrome.storage.local.set({ walletAddress, walletBalance });
-    updateWalletDisplay();
+    console.log('[SolTok Popup] Phantom not available, using demo mode');
   }
+  
+  // Demo/testing mode - simulate wallet connection
+  walletAddress = 'Demo' + Math.random().toString(36).slice(2, 8);
+  walletBalance = 100; // Demo balance
+  chrome.storage.local.set({ walletAddress, walletBalance });
+  updateWalletDisplay();
 }
 
 // Disconnect wallet
@@ -170,19 +143,6 @@ function disconnectWallet() {
   walletBalance = 0;
   chrome.storage.local.remove(['walletAddress', 'walletBalance']);
   updateWalletDisplay();
-}
-
-// Fetch USDC balance
-async function fetchBalance() {
-  try {
-    // In real extension, would call Solana RPC to get token balance
-    // For now, simulate
-    walletBalance = 100;
-    chrome.storage.local.set({ walletBalance });
-  } catch (error) {
-    console.error('Failed to fetch balance:', error);
-    walletBalance = 0;
-  }
 }
 
 // Process payment
@@ -213,8 +173,7 @@ async function processPayment() {
       createdAt: new Date().toISOString(),
     };
 
-    // In real extension, would call Phantom to sign transaction
-    // For demo, simulate transaction
+    // Simulate transaction (in real extension, would call Phantom to sign)
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate mock tx hash
@@ -225,10 +184,7 @@ async function processPayment() {
     order.txHash = txHash;
     
     // Save order to extension storage
-    chrome.runtime.sendMessage({ 
-      type: 'SAVE_ORDER', 
-      order 
-    });
+    chrome.runtime.sendMessage({ type: 'SAVE_ORDER', order });
     
     // Try to save to backend
     try {
@@ -238,7 +194,7 @@ async function processPayment() {
         body: JSON.stringify(order),
       });
     } catch (e) {
-      console.warn('Could not save to backend:', e);
+      console.warn('[SolTok Popup] Could not save to backend:', e);
     }
     
     // Show success
@@ -249,33 +205,89 @@ async function processPayment() {
     chrome.runtime.sendMessage({ type: 'CLEAR_PRODUCT' });
     
   } catch (error) {
-    console.error('Payment failed:', error);
+    console.error('[SolTok Popup] Payment failed:', error);
     elements.btnPayText.textContent = 'Payment Failed - Retry';
     elements.btnPay.disabled = false;
   }
+}
+
+// Load product from storage with retry
+async function loadProduct(retries = 3) {
+  console.log('[SolTok Popup] Loading product from storage...');
+  
+  for (let i = 0; i < retries; i++) {
+    const result = await new Promise((resolve) => {
+      chrome.storage.local.get(['currentProduct', 'walletAddress', 'walletBalance'], resolve);
+    });
+    
+    console.log(`[SolTok Popup] Storage result (attempt ${i + 1}):`, result);
+    
+    if (result.walletAddress) {
+      walletAddress = result.walletAddress;
+      walletBalance = result.walletBalance || 0;
+    }
+    
+    if (result.currentProduct) {
+      return result.currentProduct;
+    }
+    
+    // Wait and retry
+    if (i < retries - 1) {
+      console.log('[SolTok Popup] No product found, retrying in 500ms...');
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  
+  return null;
 }
 
 // Initialize popup
 async function init() {
   console.log('[SolTok Popup] Initializing...');
   
-  // Load stored wallet
-  const stored = await chrome.storage.local.get(['walletAddress', 'walletBalance', 'currentProduct']);
+  // Get DOM elements
+  elements = {
+    stateNoProduct: document.getElementById('state-no-product'),
+    stateCheckout: document.getElementById('state-checkout'),
+    stateSuccess: document.getElementById('state-success'),
+    productImage: document.getElementById('product-image'),
+    productTitle: document.getElementById('product-title'),
+    productSeller: document.getElementById('product-seller'),
+    productPrice: document.getElementById('product-price'),
+    breakdownPrice: document.getElementById('breakdown-price'),
+    breakdownFee: document.getElementById('breakdown-fee'),
+    breakdownTotal: document.getElementById('breakdown-total'),
+    shipName: document.getElementById('ship-name'),
+    shipStreet: document.getElementById('ship-street'),
+    shipCity: document.getElementById('ship-city'),
+    shipState: document.getElementById('ship-state'),
+    shipZip: document.getElementById('ship-zip'),
+    shipEmail: document.getElementById('ship-email'),
+    walletDisconnected: document.getElementById('wallet-disconnected'),
+    walletConnected: document.getElementById('wallet-connected'),
+    walletAddress: document.getElementById('wallet-address'),
+    walletBalance: document.getElementById('wallet-balance'),
+    btnConnect: document.getElementById('btn-connect'),
+    btnDisconnect: document.getElementById('btn-disconnect'),
+    btnPay: document.getElementById('btn-pay'),
+    btnPayText: document.getElementById('btn-pay-text'),
+    txLink: document.getElementById('tx-link'),
+    btnNewOrder: document.getElementById('btn-new-order'),
+  };
   
-  if (stored.walletAddress) {
-    walletAddress = stored.walletAddress;
-    walletBalance = stored.walletBalance || 0;
-  }
+  console.log('[SolTok Popup] Elements loaded:', Object.keys(elements).length);
   
-  // Get current product from background
-  chrome.runtime.sendMessage({ type: 'GET_PRODUCT' }, (response) => {
-    if (response && response.product) {
-      updateProductDisplay(response.product);
-    } else {
-      showState('no-product');
-    }
+  // Load product from storage
+  const product = await loadProduct();
+  
+  if (product) {
+    console.log('[SolTok Popup] Product found:', product);
+    updateProductDisplay(product);
+  } else {
+    console.log('[SolTok Popup] No product found');
+    showState('no-product');
     updateWalletDisplay();
-  });
+  }
   
   // Set up event listeners
   elements.btnConnect.addEventListener('click', connectWallet);
@@ -294,7 +306,19 @@ async function init() {
   formInputs.forEach(input => {
     input.addEventListener('input', updateWalletDisplay);
   });
+  
+  // Listen for storage changes (in case product is added while popup is open)
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    console.log('[SolTok Popup] Storage changed:', changes);
+    if (changes.currentProduct && changes.currentProduct.newValue) {
+      updateProductDisplay(changes.currentProduct.newValue);
+    }
+  });
 }
 
-// Start
-document.addEventListener('DOMContentLoaded', init);
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

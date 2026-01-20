@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Smart Watch - TikTok Shop Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #121212;
+      color: #fff;
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: #1a1a1a;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #333;
+    }
+    
+    .header-logo {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .header-logo span {
+      color: #fe2c55;
+    }
+    
+    .header-badge {
+      background: #fe2c55;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .product-gallery {
+      background: #1a1a1a;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    
+    .product-gallery img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    
+    .product-info {
+      padding: 8px 0;
+    }
+    
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+    
+    .seller {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .seller-avatar {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #fe2c55, #ff6b6b);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    
+    .seller-name {
+      color: #fe2c55;
+      font-weight: 600;
+    }
+    
+    .seller-verified {
+      background: #25d366;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+    
+    .price-section {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .price {
+      font-size: 36px;
+      font-weight: 700;
+      color: #fe2c55;
+    }
+    
+    .price-original {
+      font-size: 16px;
+      color: #888;
+      text-decoration: line-through;
+      margin-left: 8px;
+    }
+    
+    .price-discount {
+      background: #fe2c55;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 12px;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #888;
+    }
+    
+    .description {
+      color: #aaa;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .btn-buy {
+      background: #fe2c55;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-buy:hover {
+      background: #ff4d6d;
+    }
+    
+    .btn-cart {
+      background: transparent;
+      color: #fe2c55;
+      border: 2px solid #fe2c55;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-cart:hover {
+      background: rgba(254, 44, 85, 0.1);
+    }
+    
+    .test-banner {
+      background: linear-gradient(135deg, #9945FF, #14F195);
+      color: white;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 13px;
+    }
+    
+    .test-banner strong {
+      font-weight: 700;
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+    
+    .feature {
+      background: #1a1a1a;
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .feature-icon {
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-banner">
+    <strong>Extension Test Page</strong> — If the SolTok extension is installed, a purple/green "Pay with USDC" button should appear below
+  </div>
+
+  <div class="header">
+    <div class="header-logo">Tik<span>Tok</span></div>
+    <div class="header-badge">Shop</div>
+  </div>
+
+  <div class="container">
+    <div class="product-gallery">
+      <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80" 
+           alt="Smart Watch" 
+           class="ProductImage"
+           data-e2e="product-image">
+    </div>
+    
+    <div class="product-info">
+      <h1 data-e2e="product-title">Premium Smart Watch with Heart Rate Monitor & Sleep Tracking</h1>
+      
+      <div class="seller">
+        <div class="seller-avatar">T</div>
+        <span class="seller-name">@techgadgets</span>
+        <span class="seller-verified">✓ Verified</span>
+      </div>
+      
+      <div class="price-section">
+        <span class="price" data-e2e="product-price">$49.99</span>
+        <span class="price-original">$79.99</span>
+        <span class="price-discount">-38%</span>
+        <div class="stats">
+          <span>⭐ 4.8 (2.3k reviews)</span>
+          <span>🔥 5.2k sold</span>
+        </div>
+      </div>
+      
+      <div class="description">
+        High-quality smart watch with advanced health monitoring features. 
+        Includes heart rate tracking, sleep monitoring, step counter, and blood oxygen levels.
+        Water resistant up to 50 meters. Compatible with iOS and Android.
+        Includes magnetic charging cable and extra band.
+      </div>
+      
+      <div class="action-buttons">
+        <button class="btn-buy" data-e2e="product-buy-button">Buy Now</button>
+        <button class="btn-cart" data-e2e="add-to-cart-button">Add to Cart</button>
+        <!-- SolTok extension button will be injected here -->
+      </div>
+      
+      <div class="features">
+        <div class="feature"><span class="feature-icon">🚚</span> Free Shipping</div>
+        <div class="feature"><span class="feature-icon">↩️</span> 30-Day Returns</div>
+        <div class="feature"><span class="feature-icon">🛡️</span> Buyer Protection</div>
+        <div class="feature"><span class="feature-icon">💬</span> 24/7 Support</div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    console.log('[Test Page] Loaded - checking for SolTok extension...');
+    
+    // Check for extension button periodically
+    let checks = 0;
+    const checkInterval = setInterval(() => {
+      checks++;
+      const soltokBtn = document.getElementById('soltok-bridge-button');
+      if (soltokBtn) {
+        console.log('[Test Page] ✓ SolTok extension button found!');
+        clearInterval(checkInterval);
+      } else if (checks >= 10) {
+        console.log('[Test Page] ✗ SolTok button not found after 10 checks.');
+        console.log('[Test Page] Make sure the extension is:');
+        console.log('  1. Loaded at chrome://extensions');
+        console.log('  2. Enabled');
+        console.log('  3. Refreshed after any code changes');
+        clearInterval(checkInterval);
+      }
+    }, 500);
+  </script>
+</body>
+</html>

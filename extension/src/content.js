@@ -1,8 +1,12 @@
 // SolTok Bridge - Content Script
 // Runs on TikTok Shop product pages to extract data and inject buy button
 
+console.log('[SolTok] Content script loaded on:', window.location.href);
+
 (function() {
   'use strict';
+  
+  console.log('[SolTok] IIFE executing...');
 
   // Configuration
   const CONFIG = {
@@ -16,9 +20,13 @@
   let buttonInjected = false;
   let retryCount = 0;
 
-  // Check if we're on a TikTok Shop product page
+  // Check if we're on a TikTok Shop product page (or localhost test page)
   function isProductPage() {
     const url = window.location.href;
+    // Allow localhost for testing
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      return true;
+    }
     return url.includes('/product/') || url.includes('product_id=');
   }
 
@@ -32,11 +40,24 @@
     return params.get('product_id');
   }
 
-  // Extract seller handle from URL
+  // Extract seller handle from URL or page content
   function getSellerHandle() {
     const url = window.location.href;
     const match = url.match(/@([^/]+)/);
-    return match ? match[1] : null;
+    if (match) return match[1];
+    
+    // Try to find seller in page content
+    const sellerEl = document.querySelector('.seller, [class*="seller"], [class*="Seller"], [data-e2e*="seller"]');
+    if (sellerEl) {
+      const text = sellerEl.textContent || '';
+      const sellerMatch = text.match(/@?(\w+)/);
+      if (sellerMatch) return sellerMatch[1];
+    }
+    
+    // Fallback for testing
+    if (url.includes('localhost')) return 'testshop';
+    
+    return null;
   }
 
   // Extract product data from the page DOM
@@ -52,19 +73,22 @@
       url: window.location.href,
     };
 
-    // Strategy 1: Look for common product title selectors
+    // Strategy 1: Look for common product title selectors (prioritize data attributes)
     const titleSelectors = [
-      'h1',
       '[data-e2e="product-title"]',
       '[class*="ProductTitle"]',
       '[class*="product-title"]',
       '[class*="pdp-title"]',
+      '.mock-product-info h3',  // Test page
+      'h1[data-e2e]',
+      'h1',  // Last resort
     ];
     
     for (const selector of titleSelectors) {
       const el = document.querySelector(selector);
       if (el && el.textContent.trim().length > 3) {
         data.title = el.textContent.trim();
+        console.log('[SolTok] Found title via:', selector, '->', data.title);
         break;
       }
     }
@@ -121,20 +145,28 @@
 
     // Strategy 3: Look for product image
     const imageSelectors = [
+      '[data-e2e="product-image"]',
       '[data-e2e="product-image"] img',
+      '.mock-product img',  // Test page
+      '.product-gallery img',  // Test page
       '[class*="ProductImage"] img',
+      '[class*="ProductImage"]',
       '[class*="product-image"] img',
       '[class*="pdp-image"] img',
       '[class*="gallery"] img',
       'img[src*="tiktokcdn"]',
+      'img[src*="unsplash"]',  // Test images
     ];
 
     for (const selector of imageSelectors) {
       const el = document.querySelector(selector);
       if (el) {
-        const src = el.src || el.getAttribute('data-src');
+        // Handle both img elements and elements containing img
+        const imgEl = el.tagName === 'IMG' ? el : el.querySelector('img') || el;
+        const src = imgEl.src || imgEl.getAttribute('data-src');
         if (src && !src.includes('placeholder') && !src.includes('avatar')) {
           data.imageUrl = src;
+          console.log('[SolTok] Found image via:', selector, '->', src.slice(0, 50));
           break;
         }
       }
@@ -145,10 +177,15 @@
       const images = Array.from(document.querySelectorAll('img'))
         .filter(img => {
           const src = img.src || '';
-          return src.includes('tiktokcdn') && 
-                 !src.includes('avatar') && 
-                 !src.includes('profile') &&
-                 img.width > 100;
+          // For TikTok, filter by CDN
+          if (window.location.hostname.includes('tiktok')) {
+            return src.includes('tiktokcdn') && 
+                   !src.includes('avatar') && 
+                   !src.includes('profile') &&
+                   img.width > 100;
+          }
+          // For localhost/testing, accept any large image
+          return src && !src.includes('avatar') && !src.includes('profile') && img.width > 100;
         })
         .sort((a, b) => (b.width * b.height) - (a.width * a.height));
       
@@ -170,10 +207,12 @@
     const button = document.createElement('button');
     button.id = CONFIG.buttonId;
     button.className = 'soltok-bridge-btn';
+    // Solana logo + USDC text
     button.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="soltok-icon">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 6v12M6 12h12"/>
+      <svg viewBox="0 0 397 311" class="soltok-icon" style="width:20px;height:16px;fill:currentColor;">
+        <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z"/>
+        <path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z"/>
+        <path d="M332.1 120.9c-2.4-2.4-5.7-3.8-9.2-3.8H5.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z"/>
       </svg>
       <span class="soltok-text">Pay with USDC</span>
       <span class="soltok-price"></span>
@@ -193,22 +232,37 @@
       '[class*="buy-button"]',
       '[class*="AddToCart"]',
       'button[class*="checkout"]',
+      '.btn-buy',  // Test page
+      '.btn-cart', // Test page
     ];
 
     for (const selector of buyButtonSelectors) {
       const el = document.querySelector(selector);
       if (el) {
+        console.log('[SolTok] Found button container via:', selector);
         return el.parentElement;
       }
     }
 
     // Fallback: Look for any prominent button container
-    const containers = document.querySelectorAll('[class*="action"], [class*="Action"], [class*="button-container"]');
-    if (containers.length > 0) {
-      return containers[0];
+    const containerSelectors = [
+      '[class*="action-buttons"]',
+      '[class*="action"]',
+      '[class*="Action"]', 
+      '[class*="button-container"]',
+      '.product-info', // Test page fallback
+    ];
+    
+    for (const selector of containerSelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        console.log('[SolTok] Found container via fallback:', selector);
+        return el;
+      }
     }
 
-    return null;
+    console.log('[SolTok] No container found, will append to body');
+    return document.body;
   }
 
   // Inject the button into the page
@@ -245,6 +299,35 @@
     }
   }
 
+  // Show toast notification
+  function showToast(message) {
+    // Remove existing toast
+    const existing = document.getElementById('soltok-toast');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.id = 'soltok-toast';
+    toast.innerHTML = `
+      <div style="position:fixed;top:20px;right:20px;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:16px 20px;border-radius:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;font-weight:600;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:12px;max-width:350px;animation:slideIn 0.3s ease;">
+        <span style="font-size:20px;">✓</span>
+        <div>
+          <div style="margin-bottom:4px;">${message}</div>
+          <div style="font-size:12px;opacity:0.9;font-weight:400;">Click the SolTok extension icon in your toolbar to complete checkout.</div>
+        </div>
+      </div>
+      <style>
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      </style>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => toast.remove(), 5000);
+  }
+
   // Handle button click - send product data to extension popup
   function handleButtonClick(e) {
     e.preventDefault();
@@ -261,13 +344,25 @@
 
     console.log('[SolTok] Product data:', currentProduct);
 
-    // Send message to background script to open checkout
-    chrome.runtime.sendMessage({
-      type: 'OPEN_CHECKOUT',
-      product: currentProduct,
-    }, (response) => {
+    // Store directly to chrome.storage.local (more reliable than message passing)
+    chrome.storage.local.set({ currentProduct: currentProduct }, () => {
       if (chrome.runtime.lastError) {
-        console.error('[SolTok] Error:', chrome.runtime.lastError);
+        console.error('[SolTok] Storage error:', chrome.runtime.lastError);
+        showToast('Error saving product - please try again');
+        return;
+      }
+      
+      console.log('[SolTok] Product stored directly to storage');
+      showToast(`$${currentProduct.price.toFixed(2)} product ready!`);
+      
+      // Also notify background script (optional, for logging)
+      try {
+        chrome.runtime.sendMessage({
+          type: 'OPEN_CHECKOUT',
+          product: currentProduct,
+        });
+      } catch (err) {
+        console.log('[SolTok] Background notification skipped:', err);
       }
     });
   }

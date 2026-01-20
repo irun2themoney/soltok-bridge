@@ -1,85 +1,80 @@
 /* SolTok Bridge - Injected Button Styles */
 
 .soltok-bridge-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  margin: 8px 0;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  width: 100%;
-  max-width: 300px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 14px 28px !important;
+  margin: 12px 0 !important;
+  background: linear-gradient(135deg, #9945FF 0%, #14F195 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 15px rgba(153, 69, 255, 0.4) !important;
+  width: 100% !important;
+  max-width: 320px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
 }
 
 .soltok-bridge-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 25px rgba(153, 69, 255, 0.5) !important;
+  filter: brightness(1.1) !important;
 }
 
 .soltok-bridge-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 10px rgba(153, 69, 255, 0.3) !important;
 }
 
 .soltok-bridge-btn .soltok-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
 }
 
 .soltok-bridge-btn .soltok-text {
-  white-space: nowrap;
+  white-space: nowrap !important;
 }
 
 .soltok-bridge-btn .soltok-price {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  margin-left: 4px;
+  background: rgba(255, 255, 255, 0.2) !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  margin-left: 4px !important;
+  font-weight: 600 !important;
 }
 
-/* Solana logo animation */
-.soltok-bridge-btn .soltok-icon circle {
-  stroke: currentColor;
-}
-
+/* Pulse animation on hover */
 .soltok-bridge-btn:hover .soltok-icon {
-  animation: pulse 1s ease-in-out infinite;
+  animation: solPulse 1s ease-in-out infinite !important;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .soltok-bridge-btn {
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-  }
+@keyframes solPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 /* Mobile responsive */
 @media (max-width: 480px) {
   .soltok-bridge-btn {
-    padding: 10px 16px;
-    font-size: 13px;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
   }
   
   .soltok-bridge-btn .soltok-icon {
-    width: 18px;
-    height: 18px;
+    width: 18px !important;
+    height: 14px !important;
+  }
+  
+  .soltok-bridge-btn .soltok-price {
+    font-size: 12px !important;
+    padding: 3px 8px !important;
   }
 }
