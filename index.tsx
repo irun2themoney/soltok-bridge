@@ -4,7 +4,9 @@ window.Buffer = Buffer;
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
+import OrderStatusPage from './components/OrderStatusPage';
 import { WalletContextProvider } from './src/contexts/WalletContext';
 import { ToastProvider } from './components/Toast';
 
@@ -16,10 +18,15 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <WalletContextProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </WalletContextProvider>
+    <BrowserRouter>
+      <WalletContextProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/order/:orderId" element={<OrderStatusPage />} />
+          </Routes>
+        </ToastProvider>
+      </WalletContextProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

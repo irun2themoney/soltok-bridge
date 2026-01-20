@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Truck,
-  ImageOff
+  ImageOff,
+  Copy
 } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -564,8 +565,30 @@ const App: React.FC = () => {
                               <h2 className="text-4xl font-heading font-bold">#{order.id}</h2>
                               <p className="text-gray-500 text-xs mt-2">{order.timestamp}</p>
                            </div>
-                           <div className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest border ${order.status === 'shipped' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-blue-500 text-blue-400 animate-pulse'}`}>
-                              {order.status.toUpperCase()}
+                           <div className="flex items-center gap-3">
+                             <button
+                               onClick={() => {
+                                 const url = `${window.location.origin}/order/${order.id}`;
+                                 navigator.clipboard.writeText(url);
+                                 toast.success("Link Copied!", "Share this link to let others track your order");
+                               }}
+                               className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                               title="Copy shareable link"
+                             >
+                               <Copy className="w-4 h-4 text-gray-400" />
+                             </button>
+                             <a
+                               href={`/order/${order.id}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                               title="Open order page"
+                             >
+                               <ExternalLink className="w-4 h-4 text-gray-400" />
+                             </a>
+                             <div className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest border ${order.status === 'shipped' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-blue-500 text-blue-400 animate-pulse'}`}>
+                                {order.status.toUpperCase()}
+                             </div>
                            </div>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
