@@ -608,14 +608,31 @@ const App: React.FC = () => {
                   
                   <div className="grid grid-cols-2 gap-4 py-6 md:py-8 border-y border-white/5">
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Market Price</p>
-                      <p className="text-2xl md:text-4xl font-heading font-bold">${bridgedProduct.price}</p>
+                      <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">
+                        {(bridgedProduct as unknown as {_fallback?: boolean})._fallback ? 'Estimated Price' : 'Market Price'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl md:text-4xl font-heading font-bold">${bridgedProduct.price}</p>
+                        {(bridgedProduct as unknown as {_fallback?: boolean})._fallback && (
+                          <span className="text-[8px] bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded font-bold">EST</span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Status</p>
-                      <p className="text-emerald-400 font-bold flex items-center justify-end gap-2 text-sm md:text-base"><ShieldCheck className="w-4 md:w-5 h-4 md:h-5" /> Verified</p>
+                      <p className={`font-bold flex items-center justify-end gap-2 text-sm md:text-base ${(bridgedProduct as unknown as {_fallback?: boolean})._fallback ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                        <ShieldCheck className="w-4 md:w-5 h-4 md:h-5" /> 
+                        {(bridgedProduct as unknown as {_fallback?: boolean})._fallback ? 'Lookup Limited' : 'Verified'}
+                      </p>
                     </div>
                   </div>
+                  
+                  {(bridgedProduct as unknown as {_fallback?: boolean})._fallback && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-xs text-yellow-200/80">
+                      <strong>Note:</strong> TikTok's product data is limited. Price shown is an estimate.
+                      You can proceed with this estimate or try a different product link.
+                    </div>
+                  )}
 
                   <button 
                     onClick={() => {

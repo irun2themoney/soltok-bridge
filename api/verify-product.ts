@@ -10,9 +10,13 @@ function extractProductId(url: string): string | null {
   if (productMatch) return productMatch[1];
   
   // Format: product_id in query params
-  const urlObj = new URL(url);
-  const productId = urlObj.searchParams.get('product_id');
-  if (productId) return productId;
+  try {
+    const urlObj = new URL(url);
+    const productId = urlObj.searchParams.get('product_id');
+    if (productId) return productId;
+  } catch {
+    // Invalid URL, continue
+  }
   
   return null;
 }
@@ -23,10 +27,90 @@ function extractSellerHandle(url: string): string | null {
   return handleMatch ? handleMatch[1] : null;
 }
 
+// Try to fetch product data directly from TikTok page
+async function fetchTikTokProductDirect(url: string): Promise<Record<string, unknown> | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      redirect: 'follow',
+    });
+    
+    if (!response.ok) return null;
+    
+    const html = await response.text();
+    
+    // Try to find JSON-LD structured data
+    const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1]);
+        if (jsonLd['@type'] === 'Product' || jsonLd.name) {
+          return {
+            title: jsonLd.name,
+            price: jsonLd.offers?.price || jsonLd.price,
+            imageUrl: jsonLd.image || jsonLd.images?.[0],
+            seller: jsonLd.brand?.name || jsonLd.seller?.name,
+            description: jsonLd.description,
+          };
+        }
+      } catch {
+        // JSON-LD parse failed
+      }
+    }
+    
+    // Try to find NEXT_DATA or similar
+    const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        // Navigate through the structure to find product data
+        const product = nextData?.props?.pageProps?.product || 
+                       nextData?.props?.pageProps?.initialState?.product ||
+                       nextData?.props?.initialProps?.product;
+        if (product) {
+          return {
+            title: product.title || product.name,
+            price: product.price || product.salePrice || product.originalPrice,
+            imageUrl: product.image || product.images?.[0] || product.cover,
+            seller: product.seller?.name || product.shop?.name,
+          };
+        }
+      } catch {
+        // NEXT_DATA parse failed
+      }
+    }
+    
+    // Try to extract from meta tags
+    const ogTitle = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    const ogImage = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    const ogDescription = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
+    
+    if (ogTitle || ogImage) {
+      // Try to extract price from description or title
+      const priceMatch = (ogDescription?.[1] || ogTitle?.[1] || '').match(/\$(\d+(?:\.\d{2})?)/);
+      return {
+        title: ogTitle?.[1]?.replace(/ \| TikTok.*$/i, '').trim(),
+        imageUrl: ogImage?.[1],
+        price: priceMatch ? parseFloat(priceMatch[1]) : null,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[Direct fetch error]:', error);
+    return null;
+  }
+}
+
 // Validate and fix product data
 function validateProduct(product: Record<string, unknown>, url: string): Record<string, unknown> {
   const productId = extractProductId(url);
   const sellerHandle = extractSellerHandle(url);
+  let usedFallback = product._fallback === true;
   
   // Ensure we have an ID
   if (!product.id || product.id === 'unknown') {
@@ -43,6 +127,7 @@ function validateProduct(product: Record<string, unknown>, url: string): Record<
     } else {
       // Default to a reasonable price for testing
       price = 19.99;
+      usedFallback = true;
     }
   }
   product.price = price;
@@ -77,6 +162,26 @@ function validateProduct(product: Record<string, unknown>, url: string): Record<
     inventory = 100;
   }
   product.inventory = inventory;
+  
+  // Check if title looks generic/fallback
+  const title = String(product.title || '').toLowerCase();
+  const imageUrlStr = String(product.imageUrl || '').toLowerCase();
+  if (title.includes('tiktok shop item') || 
+      title.includes('tiktok product') || 
+      title.includes('popular product') ||
+      title.includes('example product') ||
+      title.includes('popular gadget') ||
+      title.includes('(estimate)') ||
+      title.length < 5 ||
+      imageUrlStr.includes('example.com') ||
+      imageUrlStr.includes('placeholder')) {
+    usedFallback = true;
+  }
+  
+  // Mark as fallback if we used estimated data
+  if (usedFallback) {
+    product._fallback = true;
+  }
   
   return product;
 }
@@ -146,54 +251,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  const productId = extractProductId(url);
+  const seller = extractSellerHandle(url);
+
   try {
-    // Enhanced prompt for better product extraction
+    // Step 1: Try to fetch product data directly from TikTok page
+    console.log('[Verify] Attempting direct fetch...');
+    const directData = await fetchTikTokProductDirect(url);
+    
+    if (directData && directData.title && directData.price) {
+      console.log('[Verify] Direct fetch successful:', directData);
+      const product = validateProduct({
+        id: productId || `tiktok-${Date.now()}`,
+        ...directData,
+        seller: directData.seller || seller || 'TikTok Shop',
+        category: 'TikTok Shop',
+        rating: 4.5,
+        inventory: 100,
+      }, url);
+      
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.status(200).json(product);
+    }
+    
+    // Step 2: Use Gemini with Google Search for product lookup
+    console.log('[Verify] Direct fetch incomplete, trying Gemini...');
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
-      contents: `You are a product data extraction assistant. Find information about this TikTok Shop product: ${url}
+      contents: `Find the EXACT product details for this TikTok Shop listing: ${url}
 
-TASK: Search for this exact product URL and extract accurate pricing and details.
+IMPORTANT INSTRUCTIONS:
+1. Search Google for this exact URL or the product ID "${productId || 'unknown'}"
+2. Find the REAL product name and ACTUAL price in USD
+3. Find a working image URL for the product (not a placeholder)
 
-SEARCH STRATEGY:
-1. First, search for the exact URL to find the product page
-2. If that fails, search for "site:tiktok.com" + any product identifiers from the URL
-3. Look for the product name, price in USD, seller name, and product images
+The seller handle is: @${seller || 'unknown'}
 
-CRITICAL RULES:
-- The price MUST be a positive number in USD (e.g., 24.99, not 0, not "N/A")
-- If you cannot find the exact price, estimate based on similar TikTok Shop products in the same category
-- Never return a price of 0 or null
-- Extract the seller's @handle from the URL if visible
+You MUST return accurate data. If you find the product, return real info.
+If you absolutely cannot find it, use reasonable estimates for similar TikTok Shop products.
 
-Return ONLY valid JSON (no markdown, no explanation):
-{
-  "id": "product ID from URL or generate one",
-  "title": "exact product name",
-  "price": 29.99,
-  "imageUrl": "direct image URL or placeholder",
-  "seller": "seller name or @handle",
-  "category": "product category",
-  "rating": 4.5,
-  "inventory": 100
-}`,
+Return ONLY this JSON format (no other text):
+{"id":"${productId || 'tiktok-' + Date.now()}","title":"Product Name Here","price":XX.XX,"imageUrl":"https://...","seller":"@${seller || 'seller'}","category":"Category","rating":4.5,"inventory":100}`,
       config: {
         tools: [{ googleSearch: {} }]
       }
     });
 
     const responseText = response.text || '{}';
-    console.log('[Gemini] Raw response:', responseText.slice(0, 500));
+    console.log('[Gemini] Response:', responseText.slice(0, 300));
     
-    // Extract JSON from response (might have markdown code blocks)
+    // Extract JSON from response
     let jsonStr = responseText;
-    
-    // Try to find JSON in code blocks first
     const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1];
     } else {
-      // Try to find raw JSON object
-      const objectMatch = responseText.match(/\{[\s\S]*\}/);
+      const objectMatch = responseText.match(/\{[\s\S]*?\}/);
       if (objectMatch) {
         jsonStr = objectMatch[0];
       }
@@ -202,54 +316,54 @@ Return ONLY valid JSON (no markdown, no explanation):
     let product: Record<string, unknown>;
     try {
       product = JSON.parse(jsonStr.trim());
-    } catch (parseError) {
-      console.error('[Gemini] JSON parse error:', parseError);
-      // If parsing fails, create a basic product from URL info
-      const productId = extractProductId(url);
-      const seller = extractSellerHandle(url);
+    } catch {
+      console.error('[Gemini] JSON parse failed, using fallback');
       product = {
         id: productId || `tiktok-${Date.now()}`,
-        title: 'TikTok Shop Product',
+        title: `TikTok Product by @${seller || 'shop'}`,
         price: 0,
         imageUrl: '',
-        seller: seller || 'TikTok Seller',
+        seller: seller || 'TikTok Shop',
         category: 'TikTok Shop',
         rating: 4.5,
         inventory: 100
       };
     }
     
-    // Validate and fix any issues with the product data
-    product = validateProduct(product, url);
-    
-    // Final validation
-    if (!product.title) {
-      throw new Error('Could not extract product information');
+    // Merge with any direct data we got
+    if (directData) {
+      if (directData.title && !product.title) product.title = directData.title;
+      if (directData.imageUrl && (!product.imageUrl || String(product.imageUrl).includes('placeholder'))) {
+        product.imageUrl = directData.imageUrl;
+      }
+      if (directData.price && (!product.price || product.price === 0)) {
+        product.price = directData.price;
+      }
     }
     
-    console.log('[Gemini] Final product:', JSON.stringify(product));
+    // Validate and fix any issues
+    product = validateProduct(product, url);
+    
+    console.log('[Verify] Final product:', JSON.stringify(product));
     
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).json(product);
+    
   } catch (error) {
-    console.error('Gemini API error:', error);
+    console.error('[Verify] Error:', error);
     
-    // Return a fallback product instead of failing completely
-    const productId = extractProductId(url);
-    const seller = extractSellerHandle(url);
-    
-    const fallbackProduct = {
+    // Return a reasonable fallback
+    const fallbackProduct = validateProduct({
       id: productId || `tiktok-${Date.now()}`,
-      title: 'TikTok Shop Product',
-      price: 19.99,
-      imageUrl: 'https://placehold.co/400x400/1a1a2e/10b981?text=TikTok+Product',
-      seller: seller || 'TikTok Shop Seller',
+      title: `TikTok Shop Item`,
+      price: 24.99,
+      imageUrl: '',
+      seller: seller || 'TikTok Shop',
       category: 'TikTok Shop',
       rating: 4.5,
       inventory: 100,
       _fallback: true,
-      _error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    }, url);
     
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).json(fallbackProduct);
