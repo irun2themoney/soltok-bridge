@@ -28,6 +28,8 @@ import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
 import DemoModeBanner from './components/DemoModeBanner';
+import OperatorDashboard from './components/OperatorDashboard';
+import OperatorLogin from './components/OperatorLogin';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -64,6 +66,14 @@ const App: React.FC = () => {
   const [isProcessingTx, setIsProcessingTx] = useState(false);
   const [imageError, setImageError] = useState(false);
   
+  // Operator mode state
+  const [isOperator, setIsOperator] = useState(() => {
+    const saved = localStorage.getItem('soltok_operator');
+    return saved ? ['operator-demo-2024', 'soltok-admin', 'bridge-operator'].includes(saved) : false;
+  });
+  const [showOperatorLogin, setShowOperatorLogin] = useState(false);
+  const [showOperatorDashboard, setShowOperatorDashboard] = useState(false);
+  
   // Helper to format wallet address
   const formatWalletAddress = (address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -84,6 +94,56 @@ const App: React.FC = () => {
     const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLogs(prev => [`[${time}] ${msg}`, ...prev.slice(0, 15)]);
   }, []);
+  
+  // Operator functions
+  const handleOperatorLogin = useCallback((key: string): boolean => {
+    const validKeys = ['operator-demo-2024', 'soltok-admin', 'bridge-operator'];
+    if (validKeys.includes(key)) {
+      setIsOperator(true);
+      localStorage.setItem('soltok_operator', key);
+      setShowOperatorLogin(false);
+      setShowOperatorDashboard(true);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const handleOperatorLogout = useCallback(() => {
+    setIsOperator(false);
+    localStorage.removeItem('soltok_operator');
+    setShowOperatorDashboard(false);
+  }, []);
+
+  const handleReleaseEscrow = useCallback(async (orderId: string) => {
+    // In demo mode, just simulate
+    if (isDemoMode || orderId.startsWith('DEMO')) {
+      await new Promise(r => setTimeout(r, 1500));
+      addLog(`OPERATOR: Released escrow for ${orderId}`);
+      return;
+    }
+    // In real mode, would call the escrow release instruction
+    addLog(`OPERATOR: Releasing escrow for ${orderId}...`);
+    await new Promise(r => setTimeout(r, 2000));
+    addLog(`OPERATOR: Escrow released for ${orderId}`);
+  }, [isDemoMode, addLog]);
+
+  const handleRefundOrder = useCallback(async (orderId: string) => {
+    // In demo mode, just simulate
+    if (isDemoMode || orderId.startsWith('DEMO')) {
+      await new Promise(r => setTimeout(r, 1500));
+      addLog(`OPERATOR: Refunded order ${orderId}`);
+      return;
+    }
+    // In real mode, would call the escrow refund instruction
+    addLog(`OPERATOR: Processing refund for ${orderId}...`);
+    await new Promise(r => setTimeout(r, 2000));
+    addLog(`OPERATOR: Refund completed for ${orderId}`);
+  }, [isDemoMode, addLog]);
+
+  const handleUpdateOrderStatus = useCallback((orderId: string, status: Order['status']) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    addLog(`OPERATOR: Updated ${orderId} status to ${status}`);
+  }, [addLog]);
 
   const handleFetchProduct = async () => {
     if (!urlInput.includes('tiktok.com') && !isDemoMode) {
@@ -279,8 +339,27 @@ const App: React.FC = () => {
             <button onClick={() => setActiveSection(AppSection.DASHBOARD)} className={`hover:text-white transition-colors ${activeSection === AppSection.DASHBOARD ? 'text-emerald-400' : ''}`}>My Orders {orders.length > 0 && `(${orders.length})`}</button>
             <button onClick={() => setActiveSection(AppSection.ARCHITECTURE)} className={`hover:text-white transition-colors ${activeSection === AppSection.ARCHITECTURE ? 'text-emerald-400' : ''}`}>Protocol</button>
           </div>
-          <div className="wallet-adapter-button-wrapper">
-            <WalletMultiButton className={`!px-4 md:!px-6 !py-2 md:!py-3 !rounded-xl !font-bold !text-xs md:!text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
+          <div className="flex items-center gap-3">
+            {isOperator ? (
+              <button
+                onClick={() => setShowOperatorDashboard(true)}
+                className="px-4 py-2 md:py-3 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-xs md:text-sm hover:bg-purple-500/30 transition-all flex items-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden md:inline">Operator</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowOperatorLogin(true)}
+                className="px-3 py-2 md:py-3 text-gray-500 hover:text-white rounded-xl font-bold text-xs md:text-sm transition-colors"
+                title="Operator Login"
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+            )}
+            <div className="wallet-adapter-button-wrapper">
+              <WalletMultiButton className={`!px-4 md:!px-6 !py-2 md:!py-3 !rounded-xl !font-bold !text-xs md:!text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
+            </div>
           </div>
         </div>
         {/* Mobile navigation */}
@@ -514,6 +593,44 @@ const App: React.FC = () => {
         balance={isDemoMode ? demoWalletBalance : undefined}
         onResetWallet={resetDemoWallet}
       />
+      
+      {/* Operator Login Modal */}
+      {showOperatorLogin && (
+        <OperatorLogin
+          onLogin={handleOperatorLogin}
+          onCancel={() => setShowOperatorLogin(false)}
+        />
+      )}
+      
+      {/* Operator Dashboard Modal */}
+      {showOperatorDashboard && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="min-h-screen">
+            <div className="flex justify-between items-center p-4 bg-[#0a0a0a] border-b border-white/5 sticky top-0 z-10">
+              <button
+                onClick={() => setShowOperatorDashboard(false)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+              >
+                <ArrowRight className="w-4 h-4 rotate-180" />
+                Back to App
+              </button>
+              <button
+                onClick={handleOperatorLogout}
+                className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-bold transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+            <OperatorDashboard
+              orders={orders}
+              onReleaseEscrow={handleReleaseEscrow}
+              onRefundOrder={handleRefundOrder}
+              onUpdateStatus={handleUpdateOrderStatus}
+              isDemo={isDemoMode}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
