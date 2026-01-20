@@ -21,8 +21,11 @@ import {
   Ban,
   Eye,
   MoreVertical,
+  BarChart3,
+  LayoutList,
 } from 'lucide-react';
 import { Order } from '../types';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 interface OperatorDashboardProps {
   orders: Order[];
@@ -33,6 +36,7 @@ interface OperatorDashboardProps {
 }
 
 type FilterStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered';
+type DashboardTab = 'orders' | 'analytics';
 
 export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
   orders,
@@ -41,6 +45,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
   onUpdateStatus,
   isDemo = false,
 }) => {
+  const [activeTab, setActiveTab] = useState<DashboardTab>('orders');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -156,6 +161,41 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Tab Switcher */}
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-6 w-fit">
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'orders'
+              ? 'bg-emerald-500 text-black'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <LayoutList className="w-4 h-4" />
+          Orders
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'analytics'
+              ? 'bg-purple-500 text-white'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          Analytics
+        </button>
+      </div>
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <AnalyticsDashboard orders={orders} />
+      )}
+
+      {/* Orders Tab */}
+      {activeTab === 'orders' && (
+        <>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-10">
@@ -445,6 +485,8 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
             </div>
           </div>
         </>
+      )}
+      </>
       )}
 
       {/* Order Detail Modal */}
