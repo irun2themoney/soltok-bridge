@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start": "vite",
+    "test:local": "./scripts/local-test.sh",
+    "init:escrow": "tsx scripts/initialize-escrow.ts",
     "deploy:anchor": "anchor build && anchor deploy --provider.cluster devnet"
   },
   "dependencies": {
