@@ -25,6 +25,7 @@ import { getProductFromUrl } from './services/geminiService';
 import { useEscrow } from './src/hooks/useEscrow';
 import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
+import NetworkBanner from './components/NetworkBanner';
 
 const INITIAL_STEPS: FulfillmentStep[] = [
   { id: '1', label: 'Escrow Lock', status: 'pending', description: 'Solana USDC transaction confirmation.', icon: 'wallet' },
@@ -229,11 +230,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#050505] selection:bg-emerald-500/30">
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-8 py-6">
+      <NetworkBanner />
+      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-8 py-4 md:py-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveSection(AppSection.BROWSE)}>
-            <div className="bg-emerald-500 p-2.5 rounded-xl shadow-lg shadow-emerald-500/20"><ArrowRightLeft className="w-6 h-6 text-black" /></div>
-            <span className="font-heading text-2xl font-bold">SolTok<span className="text-emerald-500">Bridge</span></span>
+          <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setActiveSection(AppSection.BROWSE)}>
+            <div className="bg-emerald-500 p-2 md:p-2.5 rounded-xl shadow-lg shadow-emerald-500/20"><ArrowRightLeft className="w-5 h-5 md:w-6 md:h-6 text-black" /></div>
+            <span className="font-heading text-xl md:text-2xl font-bold">SolTok<span className="text-emerald-500">Bridge</span></span>
           </div>
           <div className="hidden md:flex items-center gap-10 text-xs font-bold uppercase tracking-widest text-gray-500">
             <button onClick={() => setActiveSection(AppSection.BROWSE)} className={`hover:text-white transition-colors ${activeSection === AppSection.BROWSE ? 'text-emerald-400' : ''}`}>Bridge Tool</button>
@@ -241,17 +243,23 @@ const App: React.FC = () => {
             <button onClick={() => setActiveSection(AppSection.ARCHITECTURE)} className={`hover:text-white transition-colors ${activeSection === AppSection.ARCHITECTURE ? 'text-emerald-400' : ''}`}>Protocol</button>
           </div>
           <div className="wallet-adapter-button-wrapper">
-            <WalletMultiButton className={`!px-6 !py-3 !rounded-xl !font-bold !text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
+            <WalletMultiButton className={`!px-4 md:!px-6 !py-2 md:!py-3 !rounded-xl !font-bold !text-xs md:!text-sm !transition-all ${connected ? '!bg-emerald-500/10 !text-emerald-400 !border !border-emerald-500/20' : '!bg-white !text-black hover:!bg-emerald-400'}`} />
           </div>
+        </div>
+        {/* Mobile navigation */}
+        <div className="flex md:hidden items-center justify-center gap-6 mt-4 pt-4 border-t border-white/5">
+          <button onClick={() => setActiveSection(AppSection.BROWSE)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${activeSection === AppSection.BROWSE ? 'text-emerald-400' : 'text-gray-500'}`}>Bridge</button>
+          <button onClick={() => setActiveSection(AppSection.DASHBOARD)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${activeSection === AppSection.DASHBOARD ? 'text-emerald-400' : 'text-gray-500'}`}>Orders {orders.length > 0 && `(${orders.length})`}</button>
+          <button onClick={() => setActiveSection(AppSection.ARCHITECTURE)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${activeSection === AppSection.ARCHITECTURE ? 'text-emerald-400' : 'text-gray-500'}`}>Protocol</button>
         </div>
       </nav>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-16">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-6 py-8 md:py-16">
         {activeSection === AppSection.BROWSE && (
-          <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="text-center space-y-6">
-              <h1 className="text-7xl font-heading font-bold tracking-tighter leading-none">Bridge any item <br/> to <span className="text-emerald-400">Solana.</span></h1>
-              <p className="text-gray-500 text-xl max-w-xl mx-auto font-light leading-relaxed">Paste a TikTok Shop URL. We verify the price live using Google Grounding and bridge your USDC to the merchant.</p>
+          <div className="space-y-8 md:space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="text-center space-y-4 md:space-y-6">
+              <h1 className="text-4xl md:text-7xl font-heading font-bold tracking-tighter leading-none">Bridge any item <br/> to <span className="text-emerald-400">Solana.</span></h1>
+              <p className="text-gray-500 text-base md:text-xl max-w-xl mx-auto font-light leading-relaxed px-4">Paste a TikTok Shop URL. We verify the price live using Google Grounding and bridge your USDC to the merchant.</p>
             </div>
 
             <div className="relative glass p-3 rounded-[36px] border-white/10 shadow-3xl max-w-2xl mx-auto">
