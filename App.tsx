@@ -24,6 +24,7 @@ import { AppSection, TikTokProduct, ShippingAddress, Order, FulfillmentStep } fr
 import { getProductFromUrl } from './services/geminiService';
 import { useEscrow } from './src/hooks/useEscrow';
 import { useDemoMode, DEMO_PRODUCTS } from './src/hooks/useDemoMode';
+import { useOrders } from './src/hooks/useOrders';
 import ArchitectureView from './components/ArchitectureView';
 import FulfillmentTracker from './components/FulfillmentTracker';
 import NetworkBanner from './components/NetworkBanner';
@@ -88,12 +89,15 @@ const App: React.FC = () => {
     fullName: '', street: '', city: '', state: '', zip: ''
   });
 
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('soltok_orders');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => localStorage.setItem('soltok_orders', JSON.stringify(orders)), [orders]);
+  // Orders hook - handles Supabase persistence with localStorage fallback
+  const { 
+    orders, 
+    setOrders, 
+    addOrder, 
+    updateOrder,
+    isLoading: isLoadingOrders,
+    supabaseEnabled 
+  } = useOrders(publicKey?.toBase58());
 
   const addLog = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -323,13 +327,14 @@ const App: React.FC = () => {
         addLog("DEMO: Order stored locally (no backend call).");
       }
 
-      // Update local state
-      setOrders([newOrder, ...orders]);
+      // Save order (Supabase + localStorage)
+      await addOrder(newOrder);
       setIsCheckoutOpen(false);
       setActiveSection(AppSection.DASHBOARD);
       
       // Show success toast
-      toast.success("Order Created!", `Your order ${newOrder.id} is now being processed.`);
+      const dbNote = supabaseEnabled ? ' (synced to cloud)' : '';
+      toast.success("Order Created!", `Your order ${newOrder.id} is now being processed.${dbNote}`);
       
       // Start fulfillment simulation
       runFulfillmentSim(newOrder.id);
