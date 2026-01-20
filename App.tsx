@@ -428,14 +428,14 @@ const App: React.FC = () => {
               <StatsCounter className="max-w-2xl mx-auto mt-8" />
             </div>
 
-            <div className="relative glass p-3 rounded-[36px] border-white/10 shadow-3xl max-w-2xl mx-auto">
-              <div className="flex items-center gap-4 p-1">
+            <div className="relative glass p-2 md:p-3 rounded-[24px] md:rounded-[36px] border-white/10 shadow-3xl max-w-2xl mx-auto">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 p-1">
                 <div className="flex-1 relative">
-                  <LinkIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-emerald-500" />
+                  <LinkIcon className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-5 md:w-6 h-5 md:h-6 text-emerald-500" />
                   <input 
                     type="text" 
                     placeholder="Paste TikTok Shop URL..." 
-                    className="w-full bg-white/5 border-none rounded-[28px] py-7 pl-16 pr-8 text-xl focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none"
+                    className="w-full bg-white/5 border-none rounded-[20px] md:rounded-[28px] py-5 md:py-7 pl-12 md:pl-16 pr-4 md:pr-8 text-base md:text-xl focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none"
                     value={urlInput}
                     onChange={e => setUrlInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleFetchProduct()}
@@ -444,9 +444,9 @@ const App: React.FC = () => {
                 <button 
                   onClick={handleFetchProduct}
                   disabled={loading || !urlInput}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-black h-[84px] px-10 rounded-[28px] transition-all flex items-center gap-3 disabled:opacity-50 shadow-2xl shadow-emerald-500/20"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-black h-[56px] md:h-[84px] px-6 md:px-10 rounded-[20px] md:rounded-[28px] transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-2xl shadow-emerald-500/20"
                 >
-                  {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : 'VERIFY'}
+                  {loading ? <Loader2 className="w-6 md:w-7 h-6 md:h-7 animate-spin" /> : 'VERIFY'}
                 </button>
               </div>
             </div>
@@ -473,13 +473,13 @@ const App: React.FC = () => {
             )}
 
             {bridgedProduct && !loading && (
-              <div className="max-w-xl mx-auto glass p-10 rounded-[48px] border-emerald-500/20 animate-in zoom-in-95 duration-500 shadow-2xl">
-                <div className="flex flex-col gap-10">
-                  <div className="flex gap-8 items-start">
-                    <div className="w-32 h-32 rounded-3xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center shrink-0">
+              <div className="max-w-xl mx-auto glass p-6 md:p-10 rounded-[32px] md:rounded-[48px] border-emerald-500/20 animate-in zoom-in-95 duration-500 shadow-2xl">
+                <div className="flex flex-col gap-6 md:gap-10">
+                  <div className="flex flex-col sm:flex-row gap-4 md:gap-8 items-center sm:items-start">
+                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center shrink-0 relative">
                       {imageError ? (
                         <div className="flex flex-col items-center text-gray-600">
-                          <ImageOff className="w-8 h-8" />
+                          <ImageOff className="w-6 md:w-8 h-6 md:h-8" />
                           <span className="text-[8px] font-bold mt-2">LINK HIDDEN</span>
                         </div>
                       ) : (
@@ -500,29 +500,29 @@ const App: React.FC = () => {
                          />
                       )}
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 text-center sm:text-left">
                       <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full">{bridgedProduct.category}</span>
-                      <h3 className="text-2xl font-bold leading-tight">{bridgedProduct.title}</h3>
+                      <h3 className="text-xl md:text-2xl font-bold leading-tight">{bridgedProduct.title}</h3>
                       <p className="text-gray-500 text-sm">Merchant: {bridgedProduct.seller}</p>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 py-8 border-y border-white/5">
+                  <div className="grid grid-cols-2 gap-4 py-6 md:py-8 border-y border-white/5">
                     <div>
                       <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Market Price</p>
-                      <p className="text-4xl font-heading font-bold">${bridgedProduct.price}</p>
+                      <p className="text-2xl md:text-4xl font-heading font-bold">${bridgedProduct.price}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Status</p>
-                      <p className="text-emerald-400 font-bold flex items-center justify-end gap-2"><ShieldCheck className="w-5 h-5" /> Verified Link</p>
+                      <p className="text-emerald-400 font-bold flex items-center justify-end gap-2 text-sm md:text-base"><ShieldCheck className="w-4 md:w-5 h-4 md:h-5" /> Verified</p>
                     </div>
                   </div>
 
                   <button 
                     onClick={() => setIsCheckoutOpen(true)}
-                    className="w-full bg-white text-black font-black py-6 rounded-3xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-3 text-xl shadow-xl shadow-white/5"
+                    className="w-full bg-white text-black font-black py-4 md:py-6 rounded-2xl md:rounded-3xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-3 text-base md:text-xl shadow-xl shadow-white/5"
                   >
-                    <CreditCard className="w-6 h-6" /> PAY WITH USDC
+                    <CreditCard className="w-5 md:w-6 h-5 md:h-6" /> PAY WITH USDC
                   </button>
                 </div>
               </div>
@@ -560,51 +560,53 @@ const App: React.FC = () => {
                     </div>
                   ) : (
                     orders.map(order => (
-                      <div key={order.id} className="glass p-10 rounded-[48px] border border-white/5 relative overflow-hidden group">
-                         <div className="flex justify-between items-start mb-12">
+                      <div key={order.id} className="glass p-5 md:p-10 rounded-[24px] md:rounded-[48px] border border-white/5 relative overflow-hidden group">
+                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 md:mb-12">
                            <div>
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="text-emerald-400 text-[10px] font-black tracking-tighter uppercase px-2 py-1 bg-emerald-500/10 rounded-md">Order Locked</span>
                               </div>
-                              <h2 className="text-4xl font-heading font-bold">#{order.id}</h2>
+                              <h2 className="text-2xl md:text-4xl font-heading font-bold">#{order.id}</h2>
                               <p className="text-gray-500 text-xs mt-2">{order.timestamp}</p>
                            </div>
-                           <div className="flex items-center gap-3">
-                             <button
-                               onClick={() => {
-                                 const url = `${window.location.origin}/order/${order.id}`;
-                                 navigator.clipboard.writeText(url);
-                                 toast.success("Link Copied!", "Share this link to let others track your order");
-                               }}
-                               className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
-                               title="Copy shareable link"
-                             >
-                               <Copy className="w-4 h-4 text-gray-400" />
-                             </button>
-                             <a
-                               href={`/order/${order.id}`}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
-                               title="Open order page"
-                             >
-                               <ExternalLink className="w-4 h-4 text-gray-400" />
-                             </a>
-                             <div className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest border ${order.status === 'shipped' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-blue-500 text-blue-400 animate-pulse'}`}>
+                           <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                             <div className="flex items-center gap-2">
+                               <button
+                                 onClick={() => {
+                                   const url = `${window.location.origin}/order/${order.id}`;
+                                   navigator.clipboard.writeText(url);
+                                   toast.success("Link Copied!", "Share this link to let others track your order");
+                                 }}
+                                 className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                                 title="Copy shareable link"
+                               >
+                                 <Copy className="w-4 h-4 text-gray-400" />
+                               </button>
+                               <a
+                                 href={`/order/${order.id}`}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                                 title="Open order page"
+                               >
+                                 <ExternalLink className="w-4 h-4 text-gray-400" />
+                               </a>
+                             </div>
+                             <div className={`px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl text-[10px] font-black tracking-widest border ${order.status === 'shipped' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-blue-500 text-blue-400 animate-pulse'}`}>
                                 {order.status.toUpperCase()}
                              </div>
                            </div>
                          </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                            <div className="bg-white/[0.02] p-8 rounded-3xl space-y-4 border border-white/5">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-12">
+                            <div className="bg-white/[0.02] p-4 md:p-8 rounded-2xl md:rounded-3xl space-y-2 md:space-y-4 border border-white/5">
                                <h4 className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 tracking-widest"><MapPin className="w-4 h-4 text-emerald-400" /> Shipping Info</h4>
-                               <p className="text-lg font-bold">{order.shippingAddress.fullName}</p>
-                               <p className="text-sm text-gray-500 leading-relaxed">{order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.zip}</p>
+                               <p className="text-base md:text-lg font-bold">{order.shippingAddress.fullName}</p>
+                               <p className="text-xs md:text-sm text-gray-500 leading-relaxed">{order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.zip}</p>
                             </div>
-                            <div className="bg-white/[0.02] p-8 rounded-3xl space-y-4 border border-white/5">
+                            <div className="bg-white/[0.02] p-4 md:p-8 rounded-2xl md:rounded-3xl space-y-2 md:space-y-4 border border-white/5">
                                <h4 className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 tracking-widest"><ExternalLink className="w-4 h-4 text-purple-400" /> On-Chain Data</h4>
-                               <div className="flex justify-between text-sm"><span className="text-gray-500">Value</span><span className="font-bold text-emerald-400">{order.totalUsdc.toFixed(2)} USDC</span></div>
-                               <div className="flex justify-between text-xs font-mono"><span className="text-gray-500">Sig</span><span className="text-gray-400 truncate ml-8">{order.txHash}</span></div>
+                               <div className="flex justify-between text-xs md:text-sm"><span className="text-gray-500">Value</span><span className="font-bold text-emerald-400">{order.totalUsdc.toFixed(2)} USDC</span></div>
+                               <div className="flex justify-between text-[10px] md:text-xs font-mono"><span className="text-gray-500">Sig</span><span className="text-gray-400 truncate ml-4 md:ml-8">{order.txHash}</span></div>
                             </div>
                          </div>
                          <FulfillmentTracker steps={order.steps} isGlobal={order.status !== 'shipped'} />
@@ -627,61 +629,61 @@ const App: React.FC = () => {
       </main>
 
       {isCheckoutOpen && bridgedProduct && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center p-0 md:p-6">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl" onClick={() => setIsCheckoutOpen(false)} />
-          <div className="relative glass w-full max-w-5xl rounded-[64px] p-16 shadow-2xl overflow-y-auto max-h-[90vh] border border-white/10 animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-16">
-              <h2 className="text-5xl font-heading font-bold tracking-tighter">Bridge Settlement</h2>
-              <button onClick={() => setIsCheckoutOpen(false)} className="bg-white/5 hover:bg-white/10 p-4 rounded-full transition-transform hover:rotate-90">
-                <X className="w-8 h-8" />
+          <div className="relative glass w-full max-w-5xl rounded-t-[32px] md:rounded-[48px] p-6 md:p-12 lg:p-16 shadow-2xl overflow-y-auto max-h-[95vh] md:max-h-[90vh] border border-white/10 animate-in slide-in-from-bottom md:zoom-in-95">
+            <div className="flex justify-between items-center mb-8 md:mb-16">
+              <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-bold tracking-tighter">Bridge Settlement</h2>
+              <button onClick={() => setIsCheckoutOpen(false)} className="bg-white/5 hover:bg-white/10 p-3 md:p-4 rounded-full transition-transform hover:rotate-90">
+                <X className="w-6 md:w-8 h-6 md:h-8" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-               <div className="space-y-12">
-                 <div className="space-y-8">
-                   <h3 className="text-xl font-bold flex items-center gap-3"><MapPin className="w-7 h-7 text-emerald-400" /> Fulfillment Address</h3>
-                   <div className="grid grid-cols-1 gap-5">
-                     <input type="text" placeholder="Full Recipient Name" className="w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.fullName} onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} />
-                     <input type="text" placeholder="Shipping Street Address" className="w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.street} onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} />
-                     <div className="grid grid-cols-3 gap-5">
-                       <input type="text" placeholder="City" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} />
-                       <input type="text" placeholder="State" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.state} onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} />
-                       <input type="text" placeholder="Zip" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-[24px] px-8 py-5 outline-none focus:ring-2 focus:ring-emerald-500/20" value={shippingAddress.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-20">
+               <div className="space-y-6 md:space-y-12">
+                 <div className="space-y-4 md:space-y-8">
+                   <h3 className="text-lg md:text-xl font-bold flex items-center gap-3"><MapPin className="w-5 md:w-7 h-5 md:h-7 text-emerald-400" /> Fulfillment Address</h3>
+                   <div className="grid grid-cols-1 gap-3 md:gap-5">
+                     <input type="text" placeholder="Full Recipient Name" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.fullName} onChange={e => setShippingAddress({...shippingAddress, fullName: e.target.value})} />
+                     <input type="text" placeholder="Shipping Street Address" className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-4 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.street} onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})} />
+                     <div className="grid grid-cols-3 gap-2 md:gap-5">
+                       <input type="text" placeholder="City" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} />
+                       <input type="text" placeholder="State" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.state} onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} />
+                       <input type="text" placeholder="Zip" className="col-span-1 w-full bg-white/5 border border-white/10 rounded-xl md:rounded-[24px] px-3 md:px-8 py-4 md:py-5 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm md:text-base" value={shippingAddress.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} />
                      </div>
                    </div>
                  </div>
-                 <div className="bg-emerald-500/5 p-8 rounded-[36px] border border-emerald-500/20 flex gap-6">
-                    <AlertCircle className="w-8 h-8 text-emerald-400 shrink-0" />
+                 <div className="bg-emerald-500/5 p-4 md:p-8 rounded-2xl md:rounded-[36px] border border-emerald-500/20 flex gap-4 md:gap-6">
+                    <AlertCircle className="w-6 md:w-8 h-6 md:h-8 text-emerald-400 shrink-0" />
                     <div>
-                      <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Escrow Mechanism</h4>
-                      <p className="text-xs text-gray-500 leading-relaxed font-medium">Your USDC is locked in the bridge contract. The proxy agent only triggers USD off-ramping once the merchant confirms inventory availability for this specific TikTok Shop SKU.</p>
+                      <h4 className="text-[10px] md:text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Escrow Mechanism</h4>
+                      <p className="text-[10px] md:text-xs text-gray-500 leading-relaxed font-medium">Your USDC is locked in the bridge contract. The proxy agent only triggers USD off-ramping once the merchant confirms inventory.</p>
                     </div>
                  </div>
                </div>
 
-               <div className="bg-white/[0.02] p-12 rounded-[56px] border border-white/5 space-y-12 h-fit">
-                 <div className="space-y-8">
-                    <h3 className="text-xl font-bold flex items-center gap-3 text-purple-400"><CreditCard className="w-7 h-7" /> Payout Summary</h3>
-                    <div className="flex gap-8 items-center bg-white/5 p-6 rounded-[32px] border border-white/5">
-                       <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
-                          {imageError ? <ImageOff className="w-6 h-6 text-gray-700" /> : <img src={bridgedProduct.imageUrl} className="w-full h-full object-cover" />}
+               <div className="bg-white/[0.02] p-6 md:p-12 rounded-2xl md:rounded-[56px] border border-white/5 space-y-6 md:space-y-12 h-fit">
+                 <div className="space-y-4 md:space-y-8">
+                    <h3 className="text-lg md:text-xl font-bold flex items-center gap-3 text-purple-400"><CreditCard className="w-5 md:w-7 h-5 md:h-7" /> Payout Summary</h3>
+                    <div className="flex gap-4 md:gap-8 items-center bg-white/5 p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-white/5">
+                       <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
+                          {imageError ? <ImageOff className="w-5 md:w-6 h-5 md:h-6 text-gray-700" /> : <img src={bridgedProduct.imageUrl} className="w-full h-full object-cover" />}
                        </div>
-                       <div className="flex-1"><h4 className="text-base font-bold line-clamp-1">{bridgedProduct.title}</h4><p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">TikTok Verified</p></div>
-                       <span className="text-xl font-bold font-heading">${bridgedProduct.price}</span>
+                       <div className="flex-1 min-w-0"><h4 className="text-sm md:text-base font-bold line-clamp-1">{bridgedProduct.title}</h4><p className="text-[10px] md:text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">TikTok Verified</p></div>
+                       <span className="text-lg md:text-xl font-bold font-heading shrink-0">${bridgedProduct.price}</span>
                     </div>
-                    <div className="pt-10 border-t border-white/10 space-y-4">
-                      <div className="flex justify-between text-sm text-gray-500 font-bold uppercase tracking-widest"><span>Item Cost</span><span>${bridgedProduct.price.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-sm text-emerald-400 font-bold uppercase tracking-widest"><span>Bridge Fee (5%)</span><span>${((bridgedProduct?.price || 0) * 0.05).toFixed(2)}</span></div>
-                      <div className="flex justify-between text-4xl font-heading font-black pt-10 text-white tracking-tighter"><span>TOTAL DUE</span><span className="text-emerald-400">{((bridgedProduct?.price || 0) * 1.05).toFixed(2)} USDC</span></div>
+                    <div className="pt-6 md:pt-10 border-t border-white/10 space-y-3 md:space-y-4">
+                      <div className="flex justify-between text-xs md:text-sm text-gray-500 font-bold uppercase tracking-widest"><span>Item Cost</span><span>${bridgedProduct.price.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-xs md:text-sm text-emerald-400 font-bold uppercase tracking-widest"><span>Bridge Fee (5%)</span><span>${((bridgedProduct?.price || 0) * 0.05).toFixed(2)}</span></div>
+                      <div className="flex justify-between text-xl md:text-3xl lg:text-4xl font-heading font-black pt-6 md:pt-10 text-white tracking-tighter"><span>TOTAL</span><span className="text-emerald-400">{((bridgedProduct?.price || 0) * 1.05).toFixed(2)} USDC</span></div>
                     </div>
                  </div>
                  <button 
                    onClick={handleFinalCheckout} 
                    disabled={isProcessingTx || (!isDemoMode && !connected)} 
-                   className="w-full bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40 text-black font-black py-7 rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-4 disabled:opacity-50 text-2xl tracking-tighter"
+                   className="w-full bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40 text-black font-black py-5 md:py-7 rounded-xl md:rounded-[32px] transition-all shadow-3xl flex items-center justify-center gap-3 md:gap-4 disabled:opacity-50 text-base md:text-xl lg:text-2xl tracking-tighter"
                  >
-                   {isProcessingTx ? <Loader2 className="w-8 h-8 animate-spin" /> : isDemoMode ? 'DEMO PURCHASE' : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET TO PAY'}
+                   {isProcessingTx ? <Loader2 className="w-6 md:w-8 h-6 md:h-8 animate-spin" /> : isDemoMode ? 'DEMO PURCHASE' : connected ? 'INITIATE BRIDGE' : 'CONNECT WALLET'}
                  </button>
                </div>
             </div>

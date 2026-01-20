@@ -219,13 +219,13 @@ const OrderStatusPage: React.FC = () => {
     <div className="min-h-screen bg-black">
       {/* Header */}
       <header className="border-b border-white/5 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 py-3 md:py-4 flex items-center justify-between">
           <Link
             to="/"
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">SolTokBridge</span>
+            <span className="font-medium hidden sm:inline">SolTokBridge</span>
           </Link>
           
           <div className="flex items-center gap-2">
@@ -236,12 +236,12 @@ const OrderStatusPage: React.FC = () => {
               {copied ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400">Copied!</span>
+                  <span className="text-emerald-400 hidden sm:inline">Copied!</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copy Link</span>
+                  <span className="hidden sm:inline">Copy Link</span>
                 </>
               )}
             </button>
@@ -257,10 +257,10 @@ const OrderStatusPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Order Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
             <span className={`flex items-center gap-2 ${getStatusColor(order.status)}`}>
               {getStatusIcon(order.status)}
               <span className="font-bold capitalize">{order.status}</span>
@@ -271,14 +271,14 @@ const OrderStatusPage: React.FC = () => {
               </span>
             )}
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
             Order #{order.id.slice(0, 8)}
           </h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm md:text-base">
             Placed {new Date(order.createdAt).toLocaleDateString('en-US', {
-              weekday: 'long',
+              weekday: 'short',
               year: 'numeric',
-              month: 'long',
+              month: 'short',
               day: 'numeric',
               hour: '2-digit',
               minute: '2-digit'
@@ -286,24 +286,24 @@ const OrderStatusPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Product Card */}
-          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">Product</h2>
-            <div className="flex gap-4">
+          <div className="bg-white/[0.02] border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-6">
+            <h2 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4">Product</h2>
+            <div className="flex gap-3 md:gap-4">
               {order.productImage && (
                 <img
                   src={order.productImage}
                   alt={order.productName}
-                  className="w-24 h-24 rounded-xl object-cover bg-white/5"
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg md:rounded-xl object-cover bg-white/5 shrink-0"
                 />
               )}
-              <div className="flex-1">
-                <h3 className="font-bold text-white mb-1">{order.productName}</h3>
-                <p className="text-2xl font-black text-emerald-400">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-white mb-1 text-sm md:text-base line-clamp-2">{order.productName}</h3>
+                <p className="text-xl md:text-2xl font-black text-emerald-400">
                   ${order.productPrice.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-[10px] md:text-xs text-gray-500 mt-2">
                   Escrow: {order.escrowAmount.toFixed(2)} USDC
                 </p>
               </div>
@@ -311,18 +311,18 @@ const OrderStatusPage: React.FC = () => {
           </div>
 
           {/* Shipping Card */}
-          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">Shipping To</h2>
+          <div className="bg-white/[0.02] border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-6">
+            <h2 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4">Shipping To</h2>
             <div className="space-y-2">
-              <p className="text-white font-medium">{order.shippingAddress.fullName}</p>
-              <p className="text-gray-400 text-sm">
+              <p className="text-white font-medium text-sm md:text-base">{order.shippingAddress.fullName}</p>
+              <p className="text-gray-400 text-xs md:text-sm">
                 {order.shippingAddress.street && <>{order.shippingAddress.street}<br /></>}
                 {order.shippingAddress.city && `${order.shippingAddress.city}, `}
                 {order.shippingAddress.state} {order.shippingAddress.zip}
               </p>
               {order.walletAddress && (
-                <p className="text-gray-600 text-xs font-mono mt-4">
-                  Wallet: {order.walletAddress.slice(0, 8)}...{order.walletAddress.slice(-8)}
+                <p className="text-gray-600 text-[10px] md:text-xs font-mono mt-4 truncate">
+                  Wallet: {order.walletAddress.slice(0, 6)}...{order.walletAddress.slice(-6)}
                 </p>
               )}
             </div>
@@ -331,33 +331,33 @@ const OrderStatusPage: React.FC = () => {
 
         {/* Fulfillment Tracker */}
         {order.fulfillmentSteps && order.fulfillmentSteps.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-4 md:mt-6">
             <FulfillmentTracker steps={order.fulfillmentSteps} />
           </div>
         )}
 
         {/* Share Section */}
-        <div className="mt-8 p-6 bg-gradient-to-br from-emerald-500/10 to-transparent border border-emerald-500/20 rounded-2xl">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-emerald-500/20 rounded-xl">
-              <Share2 className="w-6 h-6 text-emerald-400" />
+        <div className="mt-6 md:mt-8 p-4 md:p-6 bg-gradient-to-br from-emerald-500/10 to-transparent border border-emerald-500/20 rounded-xl md:rounded-2xl">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <div className="p-2 md:p-3 bg-emerald-500/20 rounded-lg md:rounded-xl">
+              <Share2 className="w-5 md:w-6 h-5 md:h-6 text-emerald-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-white mb-1">Share Your Order</h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <h3 className="text-base md:text-lg font-bold text-white mb-1">Share Your Order</h3>
+              <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
                 Let others track your bridge transaction in real-time
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={copyLink}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-xs md:text-sm font-medium transition-colors"
                 >
                   <Copy className="w-4 h-4" />
                   Copy Link
                 </button>
                 <button
                   onClick={shareOnTwitter}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 text-[#1DA1F2] rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 text-[#1DA1F2] rounded-lg text-xs md:text-sm font-medium transition-colors"
                 >
                   <Twitter className="w-4 h-4" />
                   Share on X
@@ -368,10 +368,10 @@ const OrderStatusPage: React.FC = () => {
         </div>
 
         {/* Back to Dashboard */}
-        <div className="mt-8 text-center">
+        <div className="mt-6 md:mt-8 text-center pb-8">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm md:text-base"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to SolTokBridge
