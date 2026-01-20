@@ -29,3 +29,4 @@ test-ledger/
 .anchor/
 **/*.rs.bk
 
+.vercel
